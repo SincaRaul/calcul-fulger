@@ -1314,7 +1314,7 @@ const zDbg = { on: false, ev: 0, max: 0, hits: 0, kind: '-', taps: [] };
 function zDbgShow() {
   const b = $('#zdbg'); if (!b) return;
   b.textContent = 'Senzor: ' + (typeof DeviceMotionEvent === 'undefined' ? 'NU EXISTĂ' : (DeviceMotionEvent.requestPermission ? 'cere voie' : 'da')) +
-    ' · citiri: ' + zDbg.ev + ' · tip: ' + zDbg.kind + ' · forța maximă: ' + zDbg.max.toFixed(1) + ' (prag 11) · scuturături: ' + zDbg.hits + ' · pagină sigură: ' + (window.isSecureContext ? 'da' : 'NU');
+    ' · citiri: ' + zDbg.ev + ' · tip: ' + zDbg.kind + ' · forța maximă: ' + zDbg.max.toFixed(1) + ' (prag 11) · scuturături: ' + zDbg.hits + ' · pagină sigură: ' + (window.isSecureContext ? 'da' : 'NU') + ' · răspuns la cerere: ' + (zDbg.voie || '-') + ' · setarea senzorilor: ' + (zDbg.setare || '-');
 }
 // A doua cale, care merge pe orice telefon: 8 atingeri rapide pe Zero il ametesc.
 function zeroTapDizzy() {
@@ -1322,9 +1322,15 @@ function zeroTapDizzy() {
   if (zDbg.taps.length >= 8) { zDbg.taps = []; zDizzyUntil = 0; zeroDizzy(); return true; }
   return false;
 }
-function zeroAskMotion() {   // iPhone cere voie pentru miscare; intreaba la prima atingere a lui Zero
-  if (zMotionAsked) return; zMotionAsked = true;
-  try { if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) DeviceMotionEvent.requestPermission().catch(() => {}); } catch (e) { /* nimic */ }
+function zeroAskMotion() {   // iPhone si Chrome-ul nou cer voie pentru miscare; intreaba la atingerea lui Zero
+  // Se intreaba din nou la fiecare atingere pana raspunde „granted” (un raspuns pierdut nu mai blocheaza).
+  if (zMotionAsked) return;
+  try {
+    if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission)
+      DeviceMotionEvent.requestPermission().then(r => { zDbg.voie = r; if (r === 'granted') zMotionAsked = true; if (zDbg.on) zDbgShow(); }, err => { zDbg.voie = 'eroare: ' + (err && err.name || err); if (zDbg.on) zDbgShow(); });
+    else zMotionAsked = true;
+  } catch (e) { zDbg.voie = 'eroare: ' + e.name; }
+  try { if (navigator.permissions) navigator.permissions.query({ name: 'accelerometer' }).then(p => { zDbg.setare = p.state; if (zDbg.on) zDbgShow(); }, () => {}); } catch (e) { /* nimic */ }
 }
 function zeroMotion(e) {
   const g = e.accelerationIncludingGravity, a0 = e.acceleration;
