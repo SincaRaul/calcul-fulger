@@ -19,7 +19,7 @@ try { if (navigator.storage && navigator.storage.persist) navigator.storage.pers
 <title>Calcul Fulger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Lexend:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Lexend:wght@400;500;600;700&family=Questrial&family=Bodoni+Moda&display=swap">
 <style>
 /* Layout: o foaie din caietul de mate, cu pătrățele. Acasă: lumile, fiecare cu un drum de
    niveluri. Jocul ține un singur ecran pe telefon: sus progresul, la mijloc calculul și pașii
@@ -370,6 +370,103 @@ input.name{font:inherit;font-size:18px;padding:12px 14px;border-radius:12px;bord
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--pen-soft)}50%{box-shadow:0 0 0 9px var(--pen-soft)}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media (max-width:380px){.brand{font-size:26px}.cta .t{font-size:21px}.mode{grid-template-columns:60px minmax(0,1fr) 16px}.tile{font-size:15px}}
+
+/* ---- Zero, mascota academiei (desenul din academiazero-site/app/mascot-svg.ts, stilul din mascot.css).
+   Apare doar la momentele mari: acasa (doarme daca azi nu ai jucat; il trezesti cu o atingere),
+   la finalul nivelului (se bucura de stele) si dupa o greseala (mic, „Hmm…”, langa ajutor). ---- */
+.mz{--m-body:#16254A;--m-gold:#D4C2A5;--m-cut:#fff;--m-line:#0B1328;--m-eye:#F7F1E6;--m-red:#E4574B;display:block;width:100%;height:auto;overflow:visible}
+.mz-cut{fill:var(--m-cut);stroke:var(--m-cut)}
+.mz-cut-l{fill:none;stroke:var(--m-cut);stroke-linecap:round}
+.mz-disc{fill:var(--m-body);stroke:var(--m-line);stroke-width:5}
+.mz-gs{fill:none;stroke:var(--m-gold);stroke-linecap:round;stroke-linejoin:round}
+.mz-gf{fill:var(--m-gold)}
+.mz-limb-o{fill:none;stroke:var(--m-line);stroke-width:24;stroke-linecap:round}
+.mz-limb-i{fill:none;stroke:var(--m-body);stroke-width:15;stroke-linecap:round}
+.mz-glove{fill:#fff;stroke:var(--m-line);stroke-width:4.5}
+.mz-lace{fill:none;stroke:var(--m-line);stroke-width:3;stroke-linecap:round}
+.mz-eye{fill:var(--m-eye);stroke:var(--m-line);stroke-width:3.5}
+.mz-pupil{fill:var(--m-line)}
+.mz-mouth{fill:var(--m-line);stroke:var(--m-gold);stroke-width:4;stroke-linejoin:round}
+.mz-tongue{fill:var(--m-red)}
+.mz-ring-top{font:600 26px "Questrial","Century Gothic",sans-serif;text-anchor:middle}
+.mz-ring-bot{font:600 21.5px "Questrial","Century Gothic",sans-serif;text-anchor:middle}
+.mz-mono{font:400 70px "Bodoni Moda","Bodoni MT","Times New Roman",serif}
+.mz-line{stroke:var(--m-gold-line,var(--m-gold))}
+.mz-eyes,.mz-nose{transform-box:view-box;transform:translateY(24px)}
+.mz-mouth-g{transform-box:view-box;transform-origin:0 0;transform:translate(264px,292px) scale(2) translate(-264px,-258px)}
+.mz-shine{opacity:0}
+.mz-blink{animation:mz-blink 4.2s infinite;transform-box:fill-box;transform-origin:center}
+.mz-wave{animation:mz-wave 1.3s ease-in-out infinite;transform-box:view-box;transform-origin:466px 262px}
+.mz-bob{animation:mz-bob 2.6s ease-in-out infinite}
+.mz-hop{animation:mz-hop 1.1s cubic-bezier(.3,0,.4,1) infinite}
+.mz-float{animation:mz-float 2.2s ease-in-out infinite}
+.mz-tilt{transform-box:view-box;transform-origin:264px 400px;animation:mz-tilt 2.8s ease-in-out infinite}
+.mz-seal .mz-ze,.mz-seal .mz-eye-pop,.mz-seal .mz-mouth-pop,.mz-z{transform-box:fill-box;transform-origin:center}
+.mz-seal .mz-limbs,.mz-seal .mz-cutlimbs{transform-box:view-box;transform-origin:264px 300px}
+.mz-seal .mz-hopper{transform-box:view-box;transform-origin:264px 540px}
+.mz-seal .mz-body{transform-box:view-box;transform-origin:264px 228px;animation:mz-breathe 4s ease-in-out infinite}
+.mz-seal .mz-wave{animation:none}
+.mz-seal .mz-shine{animation:mz-shineLoop 7s 1.2s ease-in-out infinite}
+.mz-z{fill:#16254A;font-family:var(--f-display);font-weight:800;opacity:0;animation:mz-z 2.7s calc(var(--i) * .9s) ease-out infinite}
+.mz-seal .mz-limbs,.mz-seal .mz-cutlimbs{opacity:0;transform:scale(.3);transition:transform .3s ease-in,opacity .15s .15s}
+.mz-seal .mz-mouth-pop{transform:scale(0);transition:transform .2s .2s ease-in}
+.mz-seal .mz-eye-pop{transform:scale(0);transition:transform .25s .25s ease-in}
+.mz-seal .mz-nose{transform:none;transition:transform .35s .35s ease-in-out}
+.mz-seal .mz-ze{transform:scaleY(1);transition:transform .3s .5s cubic-bezier(.3,1.6,.5,1)}
+.mz-seal .mz-ro{opacity:1;transition:opacity .3s .5s}
+.mz-seal .mz-cross-low{transform-box:view-box;transform-origin:264px 292px;transform:scaleY(1);opacity:1;transition:transform .3s .1s ease-out,opacity .1s .1s}
+.mz-shadow{fill:#16254A;opacity:0;transform-box:fill-box;transform-origin:center;transform:scaleX(.4);transition:opacity .2s,transform .2s}
+.mz-seal .mz-zzz{opacity:1;transition:opacity .5s 1s}
+.mz-rim{fill:#0B1328}
+.mz-drop{fill:#16254A;opacity:.3;transition:opacity .4s .5s}
+.mz-seal .mz-coin-cut{opacity:0;transition:opacity .2s .45s}
+.is-awake .mz-seal .mz-coin-cut{opacity:1;transition:opacity .15s .1s}
+.is-awake .mz-seal .mz-drop{opacity:0;transition:opacity .2s}
+.is-awake .mz-seal .mz-zzz{opacity:0;transition:opacity .2s}
+.is-awake .mz-seal .mz-ze{transform:scaleY(0);transition:transform .2s ease-in}
+.is-awake .mz-seal .mz-ro{opacity:0;transition:opacity .25s}
+.is-awake .mz-seal .mz-cross-low{transform:scaleY(0);opacity:0;transition:transform .3s .15s ease-in,opacity .1s .4s}
+.is-awake .mz-seal .mz-shadow{opacity:.12;transform:none;transition:opacity .3s .7s,transform .45s .6s cubic-bezier(.3,1.5,.5,1)}
+.is-awake .mz-seal .mz-nose{transform:translateY(24px);transition:transform .35s .15s ease-out}
+.is-awake .mz-seal .mz-eye-pop{transform:scale(1);transition:transform .4s .2s cubic-bezier(.3,1.6,.5,1)}
+.is-awake .mz-seal .mz-mouth-pop{transform:scale(1);transition:transform .35s .4s cubic-bezier(.3,1.6,.5,1)}
+.is-awake .mz-seal .mz-limbs,.is-awake .mz-seal .mz-cutlimbs{opacity:1;transform:scale(1);transition:transform .45s .6s cubic-bezier(.3,1.5,.5,1),opacity .1s .6s}
+.is-awake .mz-seal .mz-hopper{animation:mz-hopOnce .7s 1.05s both}
+.is-awake .mz-seal .mz-wave{animation:mz-wave 1.3s 1.7s ease-in-out infinite}
+.is-awake .mz-seal .mz-body{animation:mz-bob 2.6s 1.8s ease-in-out infinite}
+.is-awake .mz-seal .mz-shine{animation:none}
+.is-asleep .mz-seal .mz-hopper{animation:mz-nudge 5s 2s ease-in-out infinite}
+@keyframes mz-blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes mz-wave{50%{transform:rotate(-16deg)}}
+@keyframes mz-bob{50%{transform:translateY(-8px)}}
+@keyframes mz-hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-26px)}}
+@keyframes mz-float{50%{transform:translateY(-10px)}}
+@keyframes mz-tilt{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes mz-shineLoop{0%{opacity:1;transform:translateX(-120px)}11%{opacity:1;transform:translateX(640px)}11.1%,100%{opacity:0;transform:translateX(640px)}}
+@keyframes mz-breathe{50%{transform:scale(1.018)}}
+@keyframes mz-z{0%{opacity:0;transform:translate(0,12px) scale(.6)}25%{opacity:.85}100%{opacity:0;transform:translate(16px,-22px) scale(1.1)}}
+@keyframes mz-hopOnce{0%{transform:none}25%{transform:translateY(6px) scale(1.04,.95)}55%{transform:translateY(-38px) scale(.97,1.03)}85%{transform:translateY(0) scale(1.05,.95)}100%{transform:none}}
+@keyframes mz-nudge{0%,86%,100%{transform:none}89%{transform:rotate(-4deg)}93%{transform:rotate(4deg)}97%{transform:rotate(-2deg)}}
+@keyframes mz-sayIn{0%{opacity:0;transform:scale(.3)}70%{opacity:1;transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+/* acasa: Zero si balonul lui */
+.zhome{display:flex;align-items:center;gap:12px}
+.zbtn{flex:none;width:112px;padding:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.zbtn:focus-visible{outline:3px solid var(--pen);outline-offset:4px;border-radius:50%}
+.zsay{position:relative;flex:1;min-width:0;padding:10px 14px;border:2.5px solid #0B1328;border-radius:16px;background:#fff;color:#16254A;font:700 16px/1.3 var(--f-display);box-shadow:3px 3px 0 #0B1328;transform-origin:0 50%;animation:mz-sayIn .4s .2s both}
+.zsay:before{content:"";position:absolute;left:-9px;top:50%;width:14px;height:14px;margin-top:-7px;background:#fff;border:solid #0B1328;border-width:0 0 2.5px 2.5px;transform:rotate(45deg)}
+.zsay small{display:block;font:500 13px/1.3 var(--f-body);color:#56618A;margin-top:2px}
+.zsay.wait{opacity:.6;font-weight:600}
+/* finalul nivelului: Zero mare, deasupra stelelor */
+.zdone{width:150px;margin:0 auto -6px}
+/* dupa o greseala: Zero mic, langa eticheta ajutorului */
+.zrow{display:flex;align-items:center;justify-content:center;gap:8px}
+.zmini{flex:none;width:52px}
+.zrow .tag{align-self:center}
+/* semnatura, jos pe ecranul de acasa */
+.zsign{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--muted);text-decoration:none;padding:10px 0 4px}
+.zsign b{color:var(--ink);font-weight:600}
+.zsign .zseal{width:26px}
+@media (prefers-reduced-motion: reduce){.mz,.mz *,.zsay{animation:none!important;transition:none!important}.mz-seal .mz-zzz{opacity:0}}
 </style>
 
 <main id="app">
@@ -1062,6 +1159,8 @@ function reportText() {
     const h = hardest('mul', 10); if (h.length) out.push('De lucrat: ' + h.map(f => f.a + DOT + f.b).join(', '));
   }
   const sd = sprintDays().slice(-7); if (sd.length) out.push('Sprint, pe zile: ' + sd.map(x => x.best).join(', '));
+  out.push('');
+  out.push('Calcul Fulger, de la Academia Z.E.R.O. · academiazero.ro');
   return out.join('\n');
 }
 
@@ -1081,6 +1180,70 @@ const el = { home: $('#home'), world: $('#world'), done: $('#done'), progress: $
   keys: $('#keys'), choices: $('#choices'), actions: $('#actions'), prog: $('#prog'), progfill: $('#progfill'), pts: $('#pts'), combo: $('#combo'), toast: $('#toast'), fx: $('#fx') };
 const svg = (cls, vb, body) => '<svg class="ic ' + cls + '" viewBox="' + vb + '" aria-hidden="true">' + body + '</svg>';
 const STAR_D = 'M12 2.6l2.85 5.95 6.45.85-4.72 4.48 1.18 6.42L12 17.2l-5.76 3.1 1.18-6.42L2.7 9.4l6.45-.85z';
+
+/* ---- Zero, mascota academiei. Port din academiazero-site/app/mascot-svg.ts (acelasi desen, din logo-ul
+   real). seal = moneda care doarme si se trezeste (clasele is-asleep / is-awake pe parinte);
+   hello = face cu mana; cheer = se bucura, cu confetti; hmm = se gandeste (dupa o greseala). ---- */
+const MZ_TOP = [["A",128,136.3,-56],["C",140.2,120.4,-49],["A",154.3,106.1,-42],["D",169.9,93.7,-35],["E",187,83.2,-28],["M",205.2,74.9,-21],["I",224.3,68.9,-14],["A",244,65.2,-7],["Z",284,65.2,7],[".",303.7,68.9,14],["E",322.8,74.9,21],[".",341,83.2,28],["R",358.1,93.7,35],[".",373.7,106.1,42],["O",387.8,120.4,49],[".",400,136.3,56]];
+const MZ_BOT = [["A",100.2,219.4,93],["N",100.6,241.6,85.3],["I",103.9,263.5,77.5],["M",110.1,284.8,69.8],["U",119.2,305,62],["S",130.9,323.8,54.3],["M",199.3,378.7,23.3],["E",220.2,386,15.5],["N",241.9,390.5,7.8],["S",264,392,0],["M",348.5,368.6,-31],["E",369.1,353.9,-39.9],["T",387.2,336.2,-48.7],["H",402.4,315.9,-57.6],["O",414.3,293.6,-66.4],["D",422.6,269.7,-75.3],["U",427.1,244.7,-84.1],["S",427.8,219.4,-93]];
+const mzLetters = a => a.map(([c, x, y, r]) => '<text transform="translate(' + x + ' ' + y + ') rotate(' + r + ')">' + c + '</text>').join('');
+const MZ_ARMS = {
+  idle: { L: 'M62 262 Q22 300 34 352', gl: [34, 356], R: 'M466 262 Q512 220 500 160', gr: [500, 154], wave: true },
+  up: { L: 'M62 240 Q20 190 38 122', gl: [38, 116], R: 'M466 240 Q508 190 490 122', gr: [490, 116], wave: false },
+  // hmm: mana stanga jos, dreapta la barbie
+  chin: { L: 'M62 262 Q22 300 34 352', gl: [34, 356], R: 'M466 300 Q470 360 400 330', gr: [392, 326], wave: false },
+};
+const MZ_LEGS = 'M232 424 L226 516 M296 424 L302 516', MZ_SHOES = [[208, 528], [320, 528]], MZ_EYES = [[206, 176], [322, 176]];
+const MZ_ZZZ = [[420, 34, 38], [452, -4, 48], [488, -44, 58]];
+const MZ_CONF = [[-10,40,'#E4574B',20],[70,-6,'#D4C2A5',-30],[180,-22,'#4BA3E4',15],[350,-24,'#5BC08A',-20],[450,-4,'#E4574B',35],[540,50,'#4BA3E4',-15],[-24,150,'#5BC08A',40],[552,160,'#D4C2A5',10]];
+const MZ_INF = 'M264 129c-8.2-11.7-14.7-16-23.2-14.1-13.4 3-14.1 20-2.3 26.1 10.7 5.6 18.8-3.7 25.5-12 7.2-9.1 14.5-17.1 25.1-14.2 13.8 3.8 14.6 19.3 2.2 26-10.6 5.7-19.3-2.9-27.3-11.8Z';
+let mzN = 0;
+function zeroSvg(mood) {
+  const uid = 'mz' + (++mzN), seal = mood === 'seal', cheer = mood === 'cheer', hmm = mood === 'hmm';
+  const A = cheer ? MZ_ARMS.up : (hmm ? MZ_ARMS.chin : MZ_ARMS.idle), wave = A.wave ? 'mz-wave' : '';
+  const armL = '<path d="' + A.L + '"/>', armR = '<path d="' + A.R + '"/>', legs = '<path d="' + MZ_LEGS + '"/>';
+  const engrave = 'filter="url(#' + uid + '-engrave)"';
+  const eyes = cheer
+    ? MZ_EYES.map(([x, y]) => '<path class="mz-gs" stroke-width="8" d="M' + (x - 20) + ' ' + (y + 10) + ' Q' + x + ' ' + (y - 22) + ' ' + (x + 20) + ' ' + (y + 10) + '"/>').join('')
+    : MZ_EYES.map(([x, y]) => '<g class="mz-eye-pop"><g class="mz-blink"><ellipse class="mz-eye" cx="' + x + '" cy="' + y + '" rx="19" ry="25"/><circle class="mz-pupil" cx="' + (x + (hmm ? 7 : 3)) + '" cy="' + (y + (hmm ? -9 : 5)) + '" r="9"/></g></g>').join('');
+  const mouth = cheer
+    ? '<path class="mz-mouth" d="M238 244 Q264 284 290 244 Z"/><path class="mz-tongue" d="M254 262 Q264 274 274 262 Q264 256 254 262Z"/>'
+    : (hmm ? '<path class="mz-gs" stroke-width="6" d="M248 256 Q256 248 264 256 Q272 264 280 256"/>' : '<path class="mz-gs" stroke-width="6" d="M246 248 Q264 264 282 248"/>');
+  const conf = cheer ? '<g class="mz-float">' + MZ_CONF.map(([x, y, c, r]) => '<rect x="' + x + '" y="' + y + '" width="16" height="9" rx="2" fill="' + c + '" transform="rotate(' + r + ' ' + (x + 8) + ' ' + (y + 4) + ')"/>').join('') + '</g>' : '';
+  const logo = seal ? '<path class="mz-gs mz-line mz-cross-low" stroke-width="2.5" d="M264 238V308" ' + engrave + '/>' +
+    '<g class="mz-gf mz-mono" ' + engrave + '><g class="mz-ze"><text x="184" y="202">Z</text><text x="299" y="202">E</text></g>' +
+    '<g class="mz-ro"><text x="182" y="289" style="font-size:69px">R</text><text transform="translate(295 289) scale(1 1.055)" style="font-size:69px">O</text></g></g>' +
+    '<g clip-path="url(#' + uid + '-clip)"><g transform="rotate(20 264 228)"><rect class="mz-shine" x="-20" y="-120" width="110" height="700" fill="url(#' + uid + '-shine)"/></g></g>' : '';
+  const zzz = seal ? '<g class="mz-zzz">' + MZ_ZZZ.map(([x, y, f], i) => '<text class="mz-z" style="--i:' + i + '" x="' + x + '" y="' + y + '" font-size="' + f + '">z</text>').join('') + '</g>' : '';
+  const shoes = MZ_SHOES;
+  return '<svg class="mz mz-' + mood + '" viewBox="-44 -110 616 690" aria-hidden="true" style="--m-gold-line:url(#' + uid + '-gold)"><defs>' +
+    '<linearGradient id="' + uid + '-gold" gradientUnits="userSpaceOnUse" x1="56" y1="20" x2="410" y2="436"><stop offset="0" stop-color="#eadbc2"/><stop offset=".42" stop-color="#d4c2a5"/><stop offset=".72" stop-color="#af9b7e"/><stop offset="1" stop-color="#e1cfb1"/></linearGradient>' +
+    '<filter id="' + uid + '-engrave" filterUnits="userSpaceOnUse" x="-44" y="-110" width="616" height="690"><feDropShadow dx="1.2" dy="1.5" stdDeviation=".75" flood-color="#03070d" flood-opacity=".92"/></filter>' +
+    (seal ? '<clipPath id="' + uid + '-clip"><circle cx="264" cy="228" r="207"/></clipPath><filter id="' + uid + '-soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="12"/></filter>' +
+      '<linearGradient id="' + uid + '-shine" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>' : '') +
+    '</defs>' + (seal ? '<ellipse class="mz-shadow" cx="264" cy="552" rx="150" ry="13"/>' : '') +
+    '<g class="mz-body ' + (seal || cheer ? '' : (hmm ? 'mz-tilt' : 'mz-bob')) + '"><g class="mz-hopper ' + (cheer ? 'mz-hop' : '') + '">' + conf +
+    (seal ? '<circle class="mz-drop" cx="276" cy="248" r="207" filter="url(#' + uid + '-soft)"/><circle class="mz-rim" cx="264" cy="237" r="207"/>' : '') +
+    '<g class="mz-cutlimbs"><g class="mz-cut-l" stroke-width="40">' + armL + '<g class="' + wave + '">' + armR + '</g>' + legs + '</g>' +
+    '<circle class="mz-cut" cx="' + A.gl[0] + '" cy="' + A.gl[1] + '" r="31"/><g class="' + wave + '"><circle class="mz-cut" cx="' + A.gr[0] + '" cy="' + A.gr[1] + '" r="31"/></g>' +
+    shoes.map(([x, y]) => '<ellipse class="mz-cut" cx="' + x + '" cy="' + y + '" rx="44" ry="26"/>').join('') + '</g>' +
+    '<circle class="mz-cut mz-coin-cut" cx="264" cy="228" r="216"/>' +
+    '<g class="mz-limbs"><g class="mz-limb-o">' + armL + legs + '</g><g class="mz-limb-i">' + armL + legs + '</g><circle class="mz-glove" cx="' + A.gl[0] + '" cy="' + A.gl[1] + '" r="22"/>' +
+    '<g class="' + wave + '"><g class="mz-limb-o">' + armR + '</g><g class="mz-limb-i">' + armR + '</g><circle class="mz-glove" cx="' + A.gr[0] + '" cy="' + A.gr[1] + '" r="22"/></g>' +
+    shoes.map(([x, y]) => '<ellipse class="mz-glove" cx="' + x + '" cy="' + y + '" rx="35" ry="17"/><path class="mz-lace" d="M' + (x - 14) + ' ' + (y - 10) + ' L' + (x - 4) + ' ' + (y + 2) + '"/>').join('') + '</g>' +
+    '<circle class="mz-disc" cx="264" cy="228" r="207"/>' +
+    '<g class="mz-ring-spin" ' + engrave + '><circle class="mz-gs mz-line" cx="264" cy="228" r="200.3" stroke-width="2.6"/>' +
+    '<g class="mz-gf mz-ring-top" transform="translate(264 228) scale(.985) translate(-264 -228)">' + mzLetters(MZ_TOP) + '</g>' +
+    '<g class="mz-gf mz-ring-bot" transform="translate(264 228) scale(1.079) translate(-264 -228)">' + mzLetters(MZ_BOT) + '</g>' +
+    '<g class="mz-gf"><circle cx="110.5" cy="171" r="5.6"/><circle cx="417.5" cy="171" r="5.6"/><circle cx="161.3" cy="355.9" r="5.6"/><circle cx="307.8" cy="386" r="5.6"/></g>' +
+    '<circle class="mz-gs mz-line" cx="264" cy="228" r="139.7" stroke-width="2.7"/></g>' +
+    '<g class="mz-nose" ' + engrave + '><path class="mz-gs mz-line" stroke-width="4.6" transform="translate(264 220) scale(.82) translate(-264 -129)" d="' + MZ_INF + '"/>' +
+    '<path class="mz-gs mz-line" stroke-width="2.5" d="M170.5 220H229M300 220H357.5M264 132V202"/></g>' + logo +
+    '<g class="mz-eyes"><g class="mz-eyes-pop">' + eyes + '</g></g><g class="mz-mouth-g"><g class="mz-mouth-pop">' + mouth + '</g></g>' +
+    '</g></g>' + zzz + '</svg>';
+}
+const SITE = 'https://academiazero.ro/?utm_source=calcul-fulger';
+const zeroMini = () => '<span class="zmini">' + zeroSvg('hmm') + '</span>';
 const ICON = {
   bolt: svg('bolt', '0 0 24 28', '<path d="M13.4 1.5 3.4 15h6.9L8.2 26.5 20.6 11.8h-7.1L13.4 1.5Z"/>'),
   flame: svg('flame', '0 0 24 24', '<path d="M12.3 2c.9 3.3-1.5 5.1-3.1 7.3C7.6 11.4 6.3 13.3 6.3 15.8c0 4 2.9 6.2 5.9 6.2 3.1 0 6-2.2 6-6.2 0-2.3-1.1-4.2-2.4-5.6.1 1.6-.5 2.9-1.6 3.4.4-3.9-.5-8.4-1.9-11.6Z"/>'),
@@ -1279,6 +1442,25 @@ function ctaHTML() {
   const s = w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (li + 1) + ' din ' + w.levels.length) + (st.s ? ' · ' + nr(st.s, 'stea', 'stele') : '');
   return '<button class="cta" type="button" data-act="level" data-w="' + wid + '" data-l="' + li + '"><span class="t">' + t + '</span><span class="s">' + s + '</span></button>';
 }
+function zeroHomeHTML(st) {
+  const nm = S.name ? ', ' + esc(S.name) : '';
+  if (st.playedToday) {
+    const msg = st.n >= 2 ? 'Bravo' + nm + '! ' + nr(st.n, 'zi', 'zile') + ' la rând.' : 'Bravo' + nm + '! Ai jucat azi.';
+    return '<div class="zhome"><span class="zbtn">' + zeroSvg('hello') + '</span><p class="zsay">' + msg + '<small>Mai faci o rundă?</small></p></div>';
+  }
+  return '<div class="zhome"><button class="zbtn is-asleep" type="button" data-act="zwake" aria-label="Trezește-l pe Zero">' + zeroSvg('seal') + '</button>' +
+    '<p class="zsay wait" id="zsay">Zero doarme. Atinge-l ca să-l trezești!</p></div>';
+}
+function zeroWake(b) {
+  if (!b || b.classList.contains('is-awake')) return;
+  b.classList.remove('is-asleep'); b.classList.add('is-awake'); b.setAttribute('aria-label', 'Zero e treaz');
+  const st = streak(), nm = S.name ? ', ' + esc(S.name) : '', p = $('#zsay');
+  if (p) setTimeout(() => {
+    p.className = 'zsay';
+    p.innerHTML = 'Salut' + nm + '!' + '<small>' + (st.n ? 'Joacă azi ca să păstrezi seria de ' + nr(st.n, 'zi', 'zile') + '.' : 'Hai la o rundă!') + '</small>';
+    p.style.animation = 'none'; void p.offsetWidth; p.style.animation = '';
+  }, 1100);
+}
 function renderHome() {
   const st = streak(), t = S.days[dayKey()] || { r: 0, sp: 0 }, L = levelOf(S.xp);
   const a = lvlStart(L), b = lvlStart(L + 1), pct = Math.max(3, Math.round((S.xp - a) / (b - a) * 100));
@@ -1292,8 +1474,7 @@ function renderHome() {
   el.home.innerHTML =
     '<header class="top"><div class="brand">' + ICON.bolt + '<span>Calcul</span><span class="w2">Fulger</span></div>' +
     '<button class="icon-btn" type="button" data-act="sound" aria-label="' + (soundOn ? 'Oprește sunetul' : 'Pornește sunetul') + '">' + (soundOn ? ICON.sndOn : ICON.sndOff) + '</button></header>' +
-    adminBar() +
-    (S.name ? '<p class="hello">Salut, ' + esc(S.name) + '!</p>' : '') +
+    adminBar() + zeroHomeHTML(st) +
     (storageOK ? '' : '<div class="card warnbox"><b>Atenție:</b> browserul ăsta nu păstrează progresul. Deschide linkul în Chrome sau Safari, nu într-o fereastră privată.</div>') +
     '<div class="stats">' +
       '<div class="stat">' + ICON.flame + '<div><b>' + st.n + '</b><div class="lab">' + zileLab + (!st.playedToday && st.n ? '<br>joacă azi ca s-o păstrezi' : '') + '</div></div></div>' +
@@ -1310,7 +1491,8 @@ function renderHome() {
       '<li><b>Antrenamentul cu harta</b> te ajută să nu uiți ce ai învățat.</li></ol></section>' : '') +
     '<section class="list"><h3 class="eyebrow">Lumile</h3>' + WORLDS.map(worldRow).join('') + '</section>' +
     '<section class="list"><h3 class="eyebrow">Antrenament</h3>' + trainRow('mul') + sprintRow() + '</section>' +
-    '<div class="btnrow"><button class="btn" type="button" data-act="progress">Progresul meu</button><button class="btn" type="button" data-act="report">Trimite raportul</button></div>';
+    '<div class="btnrow"><button class="btn" type="button" data-act="progress">Progresul meu</button><button class="btn" type="button" data-act="report">Trimite raportul</button></div>' +
+    '<a class="zsign" href="' + SITE + '" target="_blank" rel="noopener"><span class="zseal">' + zeroSvg('hello') + '</span><span>Făcut de <b>Academia Z.E.R.O.</b></span></a>';
 }
 function worldRow(w) {
   const ws = worldStars(w.id);
@@ -1565,7 +1747,7 @@ function soloHTML(r, it, L) {
 }
 function lfixHTML(r, it) {
   const vals = it.slots.map(s => s.v), st = it.slots.map(() => 'shown');
-  return '<div class="learn"><span class="tag">' + r.fixMsg + '</span><div class="lc' + (r.covered ? ' covered' : '') + '" id="lc"><div class="eq">' + it.q + ' = ' + (r.lastWrong ? '<s>' + esc(r.lastWrong) + '</s>' : '') + '<span class="ans">' + fmt(it.ans) + '</span></div>' +
+  return '<div class="learn"><div class="zrow">' + zeroMini() + '<span class="tag">' + r.fixMsg + '</span></div><div class="lc' + (r.covered ? ' covered' : '') + '" id="lc"><div class="eq">' + it.q + ' = ' + (r.lastWrong ? '<s>' + esc(r.lastWrong) + '</s>' : '') + '<span class="ans">' + fmt(it.ans) + '</span></div>' +
     '<div class="lbody">' + rowsHTML(it, { vals, st }) + (it.vis && it.rows.length < 3 ? visSVG(it.vis, true) : '') + '</div></div>' +
     '<div class="cover"><span class="small muted">Acoperă și scrie:</span><div class="q sm"><span class="qt">' + it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div></div><div class="fb" id="fb"></div></div>';
 }
@@ -1637,7 +1819,7 @@ function bigStars(n) { return '<div class="bigstars" role="img" aria-label="' + 
 function renderLevelDone(res) {
   const w = WORLDK[res.wid], L = res.L, nextL = w.levels[res.li + 1];
   const title = res.stars === 3 ? 'Perfect!' : (res.stars === 2 ? 'Nivel trecut!' : 'Nivel terminat!');
-  let h = '<div class="hero"><span class="tag">' + w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (res.li + 1)) + '</span><h1>' + title + '</h1>' + bigStars(res.stars) +
+  let h = '<div class="hero"><span class="tag">' + w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (res.li + 1)) + '</span><div class="zdone">' + zeroSvg(res.stars >= 2 ? 'cheer' : 'hello') + '</div><h1>' + title + '</h1>' + bigStars(res.stars) +
     '<p>' + res.ok + ' din ' + res.n + ' corecte singur · ' + nr(res.fast, 'fulger', 'fulgere') + '</p></div>';
   h += '<div class="tiles"><div class="tilestat"><b>+' + res.xp + '</b><span>puncte</span></div><div class="tilestat"><b>' + res.best + '</b><span>la rând, maxim</span></div><div class="tilestat"><b>' + res.stars + '/3</b><span>stele</span></div></div>';
   if (res.rankUp) h += '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + res.rankUp + ', ' + rankName(res.rankUp) + '!</p>';
@@ -1678,7 +1860,7 @@ function vecHTML(r, v) {
       return '<button class="vrow' + (act ? ' act' : '') + (o.st === 'bad' ? ' gone' : '') + '" type="button" data-act="vpick" data-i="' + i + '"' + (o.st === 'open' ? '' : ' disabled') + '>' +
         '<span>' + o.q + '</span><span class="eqs">=</span><span class="slot ' + cls + '">' + (o.st === 'bad' ? '?' : (act ? esc(r.input) : '')) + '</span></button>';
     };
-    return '<div class="vec"><span class="tag new">Te ajută vecinii</span><div class="vrows">' + row(v.c[0], 0) +
+    return '<div class="vec"><div class="zrow">' + zeroMini() + '<span class="tag new">Te ajută vecinii</span></div><div class="vrows">' + row(v.c[0], 0) +
       '<div class="vrow tgt" id="vtarget"><span>' + tq + '</span><span class="eqs">=</span>' + (v.wrong ? '<s>' + esc(v.wrong) + '</s>' : '') + '<span class="qm">?</span></div>' +
       row(v.c[1], 1) + '</div><div class="ask2">Îl știi pe unul dintre ei? Apasă pe el și scrie cât face.</div><div class="fb" id="fb"></div></div>';
   }
@@ -1927,7 +2109,7 @@ function sprintIntroHTML() {
 }
 function learnHTML() {
   const r = RUN, q = r.q, teach = r.phase === 'teach';
-  const tag = teach ? '<span class="tag new">Calcul nou · învață-l cu trucul</span>' : '<span class="tag">' + r.fixMsg + '</span>';
+  const tag = teach ? '<span class="tag new">Calcul nou · învață-l cu trucul</span>' : '<div class="zrow">' + zeroMini() + '<span class="tag">' + r.fixMsg + '</span></div>';
   const wrong = !teach && r.lastWrong ? '<s>' + esc(r.lastWrong) + '</s>' : '';
   return '<div class="learn">' + tag +
     '<div class="lc' + (r.covered ? ' covered' : '') + '" id="lc"><div class="eq">' + q.text + ' = ' + wrong + '<span class="ans">' + fmt(q.ans) + '</span></div>' +
@@ -2214,6 +2396,7 @@ document.addEventListener('click', e => {
     case 'test': startTest(); break;
     case 'retest': S.test = Object.assign({}, S.test, { done: false, partial: null }); save(); startTest(); break;
     case 'home': renderHome(); show('home'); break;
+    case 'zwake': zeroWake(b); break;
     case 'quit': quit(); break;
     case 'progress': renderProgress('lv'); show('progress'); break;
     case 'tab': renderProgress(d.tab); break;
