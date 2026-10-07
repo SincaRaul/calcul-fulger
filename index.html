@@ -318,9 +318,9 @@ input.name{font:inherit;font-size:18px;padding:12px 14px;border-radius:12px;bord
 
 /* jos: tastatura, alegerile sau butoanele */
 .dock{flex:none}
-.keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.2fr);grid-auto-rows:clamp(46px,7.4vh,62px);gap:8px}
+.keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.2fr);grid-auto-rows:clamp(56px,9vh,78px);gap:9px}
 .keys button{border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:0 3px 0 var(--line);
-  font-family:var(--f-display);font-weight:700;font-size:26px;display:grid;place-items:center;user-select:none;-webkit-user-select:none}
+  font-family:var(--f-display);font-weight:700;font-size:29px;display:grid;place-items:center;user-select:none;-webkit-user-select:none}
 .keys button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line)}
 .keys .k-fn{color:var(--muted)}
 .keys .k-back{grid-column:4;grid-row:1}
@@ -466,7 +466,19 @@ input.name{font:inherit;font-size:18px;padding:12px 14px;border-radius:12px;bord
 .zsign{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--muted);text-decoration:none;padding:10px 0 4px}
 .zsign b{color:var(--ink);font-weight:600}
 .zsign .zseal{width:26px}
-@media (prefers-reduced-motion: reduce){.mz,.mz *,.zsay{animation:none!important;transition:none!important}.mz-seal .mz-zzz{opacity:0}}
+/* Zero raspunde cand il atingi: sare o data (animatia pusa din JS, ca sa porneasca la fiecare atingere) */
+.zdonebtn{display:block;width:150px;margin:0 auto -6px;padding:0;border:0;background:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+/* surpriza: la 10 si la 20 la rand, Zero sare pe ecran si se bucura */
+.zpop{position:fixed;z-index:35;right:14px;top:calc(env(safe-area-inset-top,0px) + 58px);width:96px;pointer-events:none;animation:zpop 1.9s ease both}
+@keyframes zpop{0%{opacity:0;transform:translateY(-30px) scale(.4) rotate(-20deg)}15%{opacity:1;transform:none}80%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-20px) scale(.6)}}
+/* ecranul de pornire: logo-ul si „de la Academia Z.E.R.O.” */
+.splash{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--paper);animation:splashOut .45s 1.6s ease forwards}
+.splash .sp-seal{width:min(46vw,210px)}
+.splash .mz-zzz{display:none}
+.splash b{font-family:var(--f-display);font-weight:800;font-size:30px;letter-spacing:-.02em;color:var(--ink);animation:mz-sayIn .5s .25s both}
+.splash span{font-size:15px;color:var(--muted);animation:mz-sayIn .5s .45s both}
+@keyframes splashOut{to{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion: reduce){.mz,.mz *,.zsay,.zpop{animation:none!important;transition:none!important}.mz-seal .mz-zzz{opacity:0}.splash{animation:splashOut .01s 1s forwards}}
 </style>
 
 <main id="app">
@@ -1207,7 +1219,7 @@ function zeroSvg(mood) {
     ? MZ_EYES.map(([x, y]) => '<path class="mz-gs" stroke-width="8" d="M' + (x - 20) + ' ' + (y + 10) + ' Q' + x + ' ' + (y - 22) + ' ' + (x + 20) + ' ' + (y + 10) + '"/>').join('')
     : MZ_EYES.map(([x, y]) => '<g class="mz-eye-pop"><g class="mz-blink"><ellipse class="mz-eye" cx="' + x + '" cy="' + y + '" rx="19" ry="25"/><circle class="mz-pupil" cx="' + (x + (hmm ? 7 : 3)) + '" cy="' + (y + (hmm ? -9 : 5)) + '" r="9"/></g></g>').join('');
   const mouth = cheer
-    ? '<path class="mz-mouth" d="M238 244 Q264 284 290 244 Z"/><path class="mz-tongue" d="M254 262 Q264 274 274 262 Q264 256 254 262Z"/>'
+    ? '<path class="mz-mouth" d="M238 244 Q264 284 290 244 Z"/>'
     : (hmm ? '<path class="mz-gs" stroke-width="6" d="M248 256 Q256 248 264 256 Q272 264 280 256"/>' : '<path class="mz-gs" stroke-width="6" d="M246 248 Q264 264 282 248"/>');
   const conf = cheer ? '<g class="mz-float">' + MZ_CONF.map(([x, y, c, r]) => '<rect x="' + x + '" y="' + y + '" width="16" height="9" rx="2" fill="' + c + '" transform="rotate(' + r + ' ' + (x + 8) + ' ' + (y + 4) + ')"/>').join('') + '</g>' : '';
   const logo = seal ? '<path class="mz-gs mz-line mz-cross-low" stroke-width="2.5" d="M264 238V308" ' + engrave + '/>' +
@@ -1243,7 +1255,21 @@ function zeroSvg(mood) {
     '</g></g>' + zzz + '</svg>';
 }
 const SITE = 'https://academiazero.ro/?utm_source=calcul-fulger';
-const zeroMini = () => '<span class="zmini">' + zeroSvg('hmm') + '</span>';
+const zeroMini = mood => '<span class="zmini">' + zeroSvg(mood || 'hmm') + '</span>';
+// Ce spune Zero cand il atingi acasa (pe rand, nu la intamplare, ca sa nu se repete).
+const ZERO_ZICE = ['Hai la o rundă!', 'Știai? 7 · 8 = 56. Ca 5, 6, 7, 8!', 'Tabla e superputerea mea.', 'Fiecare greșeală e un truc nou.',
+  'Încă o rundă și ești fulger!', 'Ăsta e un sigiliu. Și eu sunt sigiliul.', '9 · 9 = 81. Faci ·10 și scazi 9.', 'Gâdili! Hai mai bine la calcule.'];
+let zeroZ = 0;
+function zeroHop(svgHost) {
+  const h = svgHost && svgHost.querySelector('.mz-hopper'); if (!h) return;
+  h.style.animation = 'none'; void h.getBoundingClientRect(); h.style.animation = 'mz-hopOnce .7s both';
+  SFX.slot(4 + (zeroZ % 4));
+}
+function zeroPop() {
+  if (!HAS_DOM || reduced()) return;
+  const d = document.createElement('div'); d.className = 'zpop'; d.innerHTML = zeroSvg('cheer');
+  document.body.appendChild(d); setTimeout(() => d.remove(), 2000);
+}
 const ICON = {
   bolt: svg('bolt', '0 0 24 28', '<path d="M13.4 1.5 3.4 15h6.9L8.2 26.5 20.6 11.8h-7.1L13.4 1.5Z"/>'),
   flame: svg('flame', '0 0 24 24', '<path d="M12.3 2c.9 3.3-1.5 5.1-3.1 7.3C7.6 11.4 6.3 13.3 6.3 15.8c0 4 2.9 6.2 5.9 6.2 3.1 0 6-2.2 6-6.2 0-2.3-1.1-4.2-2.4-5.6.1 1.6-.5 2.9-1.6 3.4.4-3.9-.5-8.4-1.9-11.6Z"/>'),
@@ -1446,13 +1472,18 @@ function zeroHomeHTML(st) {
   const nm = S.name ? ', ' + esc(S.name) : '';
   if (st.playedToday) {
     const msg = st.n >= 2 ? 'Bravo' + nm + '! ' + nr(st.n, 'zi', 'zile') + ' la rând.' : 'Bravo' + nm + '! Ai jucat azi.';
-    return '<div class="zhome"><span class="zbtn">' + zeroSvg('hello') + '</span><p class="zsay">' + msg + '<small>Mai faci o rundă?</small></p></div>';
+    return '<div class="zhome"><button class="zbtn is-awake-hello" type="button" data-act="zwake" aria-label="Atinge-l pe Zero">' + zeroSvg('hello') + '</button><p class="zsay" id="zsay">' + msg + '<small>Mai faci o rundă?</small></p></div>';
   }
   return '<div class="zhome"><button class="zbtn is-asleep" type="button" data-act="zwake" aria-label="Trezește-l pe Zero">' + zeroSvg('seal') + '</button>' +
     '<p class="zsay wait" id="zsay">Zero doarme. Atinge-l ca să-l trezești!</p></div>';
 }
 function zeroWake(b) {
-  if (!b || b.classList.contains('is-awake')) return;
+  if (!b) return;
+  if (!b.classList.contains('is-asleep')) {   // treaz: sare si spune altceva
+    const p = $('#zsay'); zeroHop(b);
+    if (p) { p.className = 'zsay'; p.innerHTML = ZERO_ZICE[zeroZ++ % ZERO_ZICE.length]; p.style.animation = 'none'; void p.offsetWidth; p.style.animation = ''; }
+    return;
+  }
   b.classList.remove('is-asleep'); b.classList.add('is-awake'); b.setAttribute('aria-label', 'Zero e treaz');
   const st = streak(), nm = S.name ? ', ' + esc(S.name) : '', p = $('#zsay');
   if (p) setTimeout(() => {
@@ -1583,7 +1614,7 @@ function reward(perfect, fast, pts, anchor, praise) {
   const c = RUN.combo || 0, special = perfect && COMBO_MSG[c];
   const msg = special || (perfect ? (praise && Math.random() < 0.35 ? pick(praise) : pick(PRAISE)) : 'Corect! Data viitoare iese din prima.');
   setFb((fast ? ICON.bolt + ' Fulger! ' : '') + msg + ' +' + pts, fast ? 'fast' : (perfect ? 'ok' : 'info'));
-  if (special) { SFX.win(); burstAt(anchor, 46, 9); }
+  if (special) { SFX.win(); burstAt(anchor, 46, 9); if (c >= 10) zeroPop(); }
   else if (perfect) { if (fast) SFX.fast(); else SFX.item(c); burstAt(anchor, 18, 6); }
   else SFX.ok();
   updateCombo(); updatePts();
@@ -1654,7 +1685,7 @@ function levelIntroHTML(r, L) {
   const w = WORLDK[r.wid], st = lvState(L.id);
   const what = L.boss ? '20 de calcule, singur. Pentru trofeu: 16 corecte.'
     : (st.p ? 'Completezi 2, apoi faci ' + L.ns + ' singur.' : 'Vezi 2 exemple, completezi ' + L.nf + ' exerciții, apoi faci ' + L.ns + ' singur.') + ' Cu ' + need2(L) + ' din ' + L.ns + ' corecte singur primești 2 stele și se deschide nivelul următor.';
-  return '<div class="intro card"><span class="tag">' + w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (r.li + 1)) + '</span><h2>' + L.name + '</h2><div class="rule">' + esc(L.rule) + '</div><p class="small">' + what + '</p>' +
+  return '<div class="intro card"><div class="zrow">' + zeroMini('hello') + '<span class="tag">' + w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (r.li + 1)) + '</span></div><h2>' + L.name + '</h2><div class="rule">' + esc(L.rule) + '</div><p class="small">' + what + '</p>' +
     '<p class="small">Scrii rezultatul și apeși <b>OK</b>. Contează primul răspuns.</p>' + (st.s ? '<p class="small muted">Stelele tale: ' + starsHTML(st.s) + '</p>' : '') + '</div>';
 }
 function introButtons(L) {
@@ -1819,7 +1850,7 @@ function bigStars(n) { return '<div class="bigstars" role="img" aria-label="' + 
 function renderLevelDone(res) {
   const w = WORLDK[res.wid], L = res.L, nextL = w.levels[res.li + 1];
   const title = res.stars === 3 ? 'Perfect!' : (res.stars === 2 ? 'Nivel trecut!' : 'Nivel terminat!');
-  let h = '<div class="hero"><span class="tag">' + w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (res.li + 1)) + '</span><div class="zdone">' + zeroSvg(res.stars >= 2 ? 'cheer' : 'hello') + '</div><h1>' + title + '</h1>' + bigStars(res.stars) +
+  let h = '<div class="hero"><span class="tag">' + w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (res.li + 1)) + '</span><button class="zdonebtn" type="button" data-act="zhop" aria-label="Atinge-l pe Zero">' + zeroSvg(res.stars >= 2 ? 'cheer' : 'hello') + '</button><h1>' + title + '</h1>' + bigStars(res.stars) +
     '<p>' + res.ok + ' din ' + res.n + ' corecte singur · ' + nr(res.fast, 'fulger', 'fulgere') + '</p></div>';
   h += '<div class="tiles"><div class="tilestat"><b>+' + res.xp + '</b><span>puncte</span></div><div class="tilestat"><b>' + res.best + '</b><span>la rând, maxim</span></div><div class="tilestat"><b>' + res.stars + '/3</b><span>stele</span></div></div>';
   if (res.rankUp) h += '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + res.rankUp + ', ' + rankName(res.rankUp) + '!</p>';
@@ -2397,6 +2428,7 @@ document.addEventListener('click', e => {
     case 'retest': S.test = Object.assign({}, S.test, { done: false, partial: null }); save(); startTest(); break;
     case 'home': renderHome(); show('home'); break;
     case 'zwake': zeroWake(b); break;
+    case 'zhop': zeroHop(b); break;
     case 'quit': quit(); break;
     case 'progress': renderProgress('lv'); show('progress'); break;
     case 'tab': renderProgress(d.tab); break;
@@ -2454,6 +2486,13 @@ window.addEventListener('hashchange', () => { checkAdmin(); renderHome(); });
 /* ---- pornire: acasă imediat; dacă pagina s-a actualizat în timpul unui joc, jocul continuă ---- */
 checkAdmin();
 renderHome(); show('home');
+(function splash() {
+  const d = document.createElement('div'); d.className = 'splash'; d.setAttribute('aria-hidden', 'true');
+  d.innerHTML = '<div class="sp-seal is-asleep">' + zeroSvg('seal') + '</div><b>Calcul Fulger</b><span>de la Academia Z.E.R.O.</span>';
+  document.body.appendChild(d);
+  const go = () => d.remove(); d.addEventListener('animationend', e => { if (e.animationName === 'splashOut') go(); }); d.addEventListener('click', go);
+  setTimeout(go, 2600);
+})();
 const HOT = window.claude && window.claude.hot;
 try { if (HOT && HOT.snapshot) HOT.snapshot(() => ({ run: RUN && RUN.kind !== 'sprint' ? RUN : null })); } catch (e) { /* fără actualizare din mers */ }
 function resume(data) {
