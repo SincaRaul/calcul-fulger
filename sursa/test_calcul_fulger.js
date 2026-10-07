@@ -2,7 +2,7 @@
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const html = fs.readFileSync(path.join(__dirname, 'calcul_fulger.html'), 'utf8');
 const js = html.slice(html.indexOf('<script>') + 8, html.lastIndexOf('</script>'));
-const ctx = { console, Math, Date, performance, globalThis: null };
+const ctx = { console, Math, Date, performance, TextEncoder, globalThis: null };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
 vm.runInContext(js, ctx);
@@ -157,6 +157,14 @@ const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.W
   const txt = CF.reportText();
   ok(txt.indexOf('Andrei') >= 0 && txt.indexOf('Testul de pornire') >= 0 && txt.indexOf('știe ·2, ·8') >= 0 && txt.indexOf('încet 8 + 5') >= 0, 'raportul cu testul');
   ok(txt.indexOf('undefined') < 0 && txt.indexOf('NaN') < 0, 'raportul are „undefined” sau „NaN”');
+  { // codul de control: se potriveste cu textul, se strica la o schimbare, nu tine cont de spatii
+    const m = /\n\nCod de control: ([0-9A-F]{4}-[0-9A-F]{4})$/.exec(txt);
+    ok(!!m, 'raportul se termina cu codul de control');
+    const body = txt.slice(0, m.index);
+    ok(CF.repCode(body) === m[1], 'codul de control nu se potriveste cu raportul');
+    ok(CF.repCode(body.replace('Andrei', 'Andre1')) !== m[1], 'o litera schimbata nu schimba codul');
+    ok(CF.repCode(body.replace(/\n/g, '\r\n  ').replace(/ /g, '  ')) === m[1], 'spatiile in plus schimba codul');
+  }
   console.log('--- exemplu de raport ---\n' + txt + '\n------------------------');
 }
 

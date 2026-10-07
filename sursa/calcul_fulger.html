@@ -1182,14 +1182,29 @@ function reportText() {
   const sd = sprintDays().slice(-7); if (sd.length) out.push('Sprint, pe zile: ' + sd.map(x => x.best).join(', '));
   out.push('');
   out.push('Calcul Fulger, de la Academia Z.E.R.O. · academiazero.ro');
-  return out.join('\n');
+  const body = out.join('\n');
+  return body + '\n\nCod de control: ' + repCode(body);
+}
+/* Codul de control de la finalul raportului (cerut de profesor, 2026-10-08): arata daca textul a fost
+   schimbat dupa ce l-a scris jocul. Se calculeaza din tot textul de deasupra lui. Spatiile, randurile
+   goale si felul in care WhatsApp rupe randurile nu conteaza; orice cifra, litera sau semn schimbat, da.
+   Il verifica verifica_raport.py (acelasi calcul, in Python). Limita: jocul e public, deci cine citeste
+   codul jocului poate calcula un cod nou. Prinde schimbarile facute de mana, nu pe cineva care stie programare. */
+const REP_SALT = 'calcul-fulger/raport/v1';
+function repNorm(t) { return t.normalize('NFC').replace(/\r\n?/g, '\n').split('\n').map(l => l.replace(/\s+/g, ' ').trim()).filter(l => l).join('\n'); }
+function repCode(body) {
+  const bytes = new TextEncoder().encode(REP_SALT + '\n' + repNorm(body));
+  let h = 0x811c9dc5;                                   // FNV-1a pe 32 de biti
+  for (const b of bytes) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
+  const x = h.toString(16).toUpperCase().padStart(8, '0');
+  return x.slice(0, 4) + '-' + x.slice(4);
 }
 
 if (!HAS_DOM) {
   // Doar pentru verificarea automată (fără browser).
   globalThis.CF = { FAM, FAMK, trickOf, mulHelp, divHelp, addHelp, subHelp, famQuestion, buildFamRound, assemble, famUpdate, famTeach, mulXY, nbCands, nbFirst, nbBridge, nbSteps,
     WORLDS, WORLDK, levelPlan, starsFor, isUnlocked, nextLevel, worldStars, testList, testVerdict, applyTest, reportText,
-    blankState, levelOf, rankName, nr, SPRINT, dayIdx, getS: () => S, setS: v => { S = v; }, setAdmin: v => { ADMIN = v; } };
+    blankState, levelOf, rankName, nr, SPRINT, repCode, repNorm, dayIdx, getS: () => S, setS: v => { S = v; }, setAdmin: v => { ADMIN = v; } };
   return;
 }
 
