@@ -1,0 +1,2292 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2851D8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Calcul Fulger">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+// Aplicatia merge si fara internet; telefonul e rugat sa nu stearga progresul.
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+</script>
+<title>Calcul Fulger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Lexend:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: o foaie din caietul de mate, cu pătrățele. Acasă: lumile, fiecare cu un drum de
+   niveluri. Jocul ține un singur ecran pe telefon: sus progresul, la mijloc calculul și pașii
+   cu căsuțe (ca pe fișele de hârtie), jos tastatura. Albastrul pixului e culoarea de bază;
+   galbenul fulgerului e pentru viteză și stele; gri, portocaliu, galben și verde arată starea. */
+:root{
+  --paper:#F3F5FA; --grid:#DEE4F1; --card:#FFFFFF; --ink:#131D3B; --muted:#56618A; --line:#D1D8E8;
+  --pen:#2851D8; --pen-2:#1A38A0; --on-pen:#FFFFFF; --pen-soft:#E2E9FF;
+  --bolt:#E7A000; --bolt-soft:#FFF0C0; --bolt-ink:#8A5A00; --on-bolt:#3A2A00; --good:#12814C; --ok-soft:#DAF3E6; --warn:#B64E1C; --on-warn:#FFFFFF;
+  --s0:#E2E7F2; --s0-fg:#5F6B92; --s1:#FFB07A; --s1-fg:#4A1E02; --s2:#FFD964; --s2-fg:#463400;
+  --s3:#86D9A9; --s3-fg:#083820; --s4:#15935A; --s4-fg:#FFFFFF;
+  --shadow:0 1px 0 rgb(19 29 59 / .05), 0 10px 24px -14px rgb(19 29 59 / .35);
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,-apple-system,sans-serif;
+  --f-body:"Lexend","Segoe UI",system-ui,-apple-system,sans-serif;
+  --r:16px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0C1430; --grid:#172150; --card:#131D42; --ink:#E7ECFF; --muted:#9AA6CD; --line:#27335F;
+    --pen:#7395FF; --pen-2:#4A6CE0; --on-pen:#08102E; --pen-soft:#1C2A5E;
+    --bolt:#FFC43A; --bolt-soft:#3A3113; --bolt-ink:#FFD066; --on-bolt:#3A2A00; --good:#46D490; --ok-soft:#123D2A; --warn:#FF9466; --on-warn:#2A0E00;
+    --s0:#1A2550; --s0-fg:#8391BA; --s1:#AF521C; --s1-fg:#FFF0E4; --s2:#AB8812; --s2-fg:#FFF8DA;
+    --s3:#1D764B; --s3-fg:#E3FFEF; --s4:#3AD48B; --s4-fg:#04251A;
+    --shadow:0 1px 0 rgb(0 0 0 / .3), 0 12px 26px -14px rgb(0 0 0 / .7);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0C1430; --grid:#172150; --card:#131D42; --ink:#E7ECFF; --muted:#9AA6CD; --line:#27335F;
+  --pen:#7395FF; --pen-2:#4A6CE0; --on-pen:#08102E; --pen-soft:#1C2A5E;
+  --bolt:#FFC43A; --bolt-soft:#3A3113; --bolt-ink:#FFD066; --on-bolt:#3A2A00; --good:#46D490; --ok-soft:#123D2A; --warn:#FF9466; --on-warn:#2A0E00;
+  --s0:#1A2550; --s0-fg:#8391BA; --s1:#AF521C; --s1-fg:#FFF0E4; --s2:#AB8812; --s2-fg:#FFF8DA;
+  --s3:#1D764B; --s3-fg:#E3FFEF; --s4:#3AD48B; --s4-fg:#04251A;
+  --shadow:0 1px 0 rgb(0 0 0 / .3), 0 12px 26px -14px rgb(0 0 0 / .7);
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px;background-position:-1px -1px;
+  color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body.playing{overflow:hidden}
+button,a.btn{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;text-decoration:none}
+:focus-visible{outline:3px solid var(--pen);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);font-weight:800;margin:0;line-height:1.08;text-wrap:balance;letter-spacing:-.01em}
+h3{font-size:18px}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.center{text-align:center}
+.eyebrow{font-family:var(--f-body);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 16px;min-width:0}
+
+.ic{width:22px;height:22px;fill:currentColor;stroke:currentColor;flex:none}
+.ic.bolt{fill:var(--bolt);stroke:none}
+.ic.flame{fill:var(--warn);stroke:none}
+.ic.st-on{fill:var(--bolt);stroke:none}
+.ic.st-off{fill:none;stroke:var(--muted);stroke-width:1.6}
+
+#app{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:14px 32px}
+.screen{display:flex;flex-direction:column;gap:14px}
+
+/* ---- acasă ---- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:6px;font-family:var(--f-display);font-weight:800;font-size:30px;letter-spacing:-.02em;line-height:1}
+.brand .ic{width:24px;height:30px}
+.brand .w2{color:var(--pen)}
+.h-page{font-size:24px;text-align:center;flex:1;min-width:0}
+.icon-btn{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;border:1px solid var(--line);background:var(--card);flex:none}
+.hello{font-size:15px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;min-width:0}
+.stat .ic{width:28px;height:28px}
+.stat b{font-family:var(--f-display);font-size:24px;line-height:1;display:block}
+.stat .lab{font-size:13px;color:var(--muted);line-height:1.25}
+.lvlbadge{width:32px;height:32px;border-radius:9px;background:var(--pen);color:var(--on-pen);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:17px;flex:none}
+.xpbar{height:6px;border-radius:6px;background:var(--s0);overflow:hidden;margin-top:6px}
+.xpbar i{display:block;height:100%;background:var(--pen);border-radius:6px}
+.goal{display:flex;align-items:center;gap:14px}
+.goal h2{font-size:20px}
+.pips{display:flex;gap:6px;flex:none}
+.pip{width:28px;height:28px;border-radius:8px;border:2px dashed var(--line);display:grid;place-items:center;color:var(--on-pen)}
+.pip.on{background:var(--pen);border:2px solid var(--pen)}
+.pip .ic{width:16px;height:16px}
+.pip.sp .ic{width:14px;height:16px;fill:var(--muted)}
+.pip.sp.on{background:var(--bolt);border-color:var(--bolt)}
+.pip.sp.on .ic{fill:var(--on-bolt)}
+.cta{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;padding:16px 18px;border-radius:18px;
+  background:var(--pen);color:var(--on-pen);box-shadow:0 4px 0 var(--pen-2);text-align:left;transition:transform .08s,box-shadow .08s}
+.cta:active{transform:translateY(3px);box-shadow:0 1px 0 var(--pen-2)}
+.cta .t{font-family:var(--f-display);font-weight:800;font-size:24px;line-height:1.1}
+.cta .s{font-size:14px;opacity:.9}
+.cta.test{background:var(--bolt);color:var(--on-bolt);box-shadow:0 4px 0 var(--bolt-ink)}
+.linkbtn{align-self:center;font-size:14px;color:var(--muted);text-decoration:underline;padding:10px 14px;min-height:44px}
+.how ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:15px}
+.list{display:flex;flex-direction:column;gap:8px}
+.mode{display:grid;grid-template-columns:70px minmax(0,1fr) 18px;align-items:center;gap:12px;width:100%;text-align:left;
+  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.mode > .ic{width:18px;height:18px;color:var(--muted)}
+.tile{height:48px;border-radius:10px;background:var(--pen-soft);color:var(--pen);display:grid;place-items:center;
+  font-family:var(--f-display);font-weight:800;font-size:17px;white-space:nowrap}
+.tile .ic{width:22px;height:24px}
+.mode .n{font-weight:600;display:block;line-height:1.25}
+.mode .p{font-size:13px;color:var(--muted);display:block;line-height:1.3}
+.stack{display:flex;height:6px;border-radius:6px;overflow:hidden;margin-top:6px;background:var(--s0)}
+.stack i{display:block;height:100%}
+.bg1{background:var(--s1)} .bg2{background:var(--s2)} .bg3{background:var(--s3)} .bg4{background:var(--s4)}
+.trophies{display:flex;gap:8px;flex-wrap:wrap}
+.trophy{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;background:var(--bolt-soft);color:var(--bolt-ink);font-weight:600;font-size:13px}
+.trophy .ic{width:16px;height:16px;fill:var(--bolt);stroke:var(--bolt)}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{display:block;padding:14px 10px;border-radius:14px;font-weight:600;text-align:center;border:1px solid var(--line);background:var(--card);box-shadow:0 3px 0 var(--line)}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line)}
+.btn.primary{background:var(--pen);color:var(--on-pen);border-color:var(--pen);box-shadow:0 3px 0 var(--pen-2)}
+.btn.danger{background:var(--warn);color:var(--on-warn);border-color:var(--warn);box-shadow:none}
+.warnbox{border-color:var(--warn)}
+.warnbox p{margin-bottom:10px}
+.admin{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bolt-soft);border:1.5px dashed var(--bolt);border-radius:12px;padding:8px 12px;font-size:14px}
+.admin .btn{padding:8px 12px;box-shadow:none;flex:none}
+
+/* ---- drumul nivelurilor ---- */
+.wstars{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:15px;flex:none;min-width:44px;justify-content:flex-end}
+.wstars .ic{width:18px;height:18px}
+.path{display:flex;flex-direction:column;gap:10px;position:relative}
+.path::before{content:"";position:absolute;left:34px;top:24px;bottom:24px;width:3px;background:var(--line);border-radius:3px}
+.node{position:relative;display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;text-align:left;
+  background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 12px}
+.node .num{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:19px;
+  background:var(--pen-soft);color:var(--pen);position:relative;z-index:1}
+.node .num .ic{width:20px;height:20px}
+.node.done .num{background:var(--s4);color:var(--s4-fg)}
+.node.cur{border:2px solid var(--pen);padding:9px 11px}
+.node.cur .num{background:var(--pen);color:var(--on-pen);animation:pulse 1.8s ease-in-out infinite}
+.node.locked .num{background:var(--s0);color:var(--s0-fg)}
+.node.locked .nb{opacity:.65}
+.node.boss .num{background:var(--bolt);color:var(--on-bolt)}
+.node .n{display:block;font-weight:600;line-height:1.25}
+.node .p{display:block;font-size:13px;color:var(--muted);line-height:1.3}
+.stars{display:inline-flex;gap:2px;margin-top:4px;vertical-align:middle}
+.stars .ic{width:15px;height:15px}
+.go{font-size:13px;font-weight:700;color:var(--on-pen);background:var(--pen);border-radius:999px;padding:5px 11px}
+
+/* ---- harta ---- */
+.map{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;margin-block:10px 8px}
+.cell{aspect-ratio:1;border-radius:7px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:10.5px;line-height:1.05;background:var(--s0);color:var(--s0-fg);border:0;min-width:0;font-variant-numeric:tabular-nums}
+.cell.empty{background:transparent}
+.cell.s1{background:var(--s1);color:var(--s1-fg)}
+.cell.s2{background:var(--s2);color:var(--s2-fg)}
+.cell.s3{background:var(--s3);color:var(--s3-fg)}
+.cell.s4{background:var(--s4);color:var(--s4-fg)}
+.cell .v{font-family:var(--f-display);font-weight:800;font-size:15px}
+.cell .ic{position:absolute;top:2px;right:2px;width:8px;height:10px;fill:var(--s4-fg)}
+.cell.hl{box-shadow:0 0 0 2.5px var(--ink);animation:pop .7s ease both}
+button.cell:active{transform:scale(.94)}
+.map-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;color:var(--muted)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px;background:var(--s0)}
+.sw.s1{background:var(--s1)} .sw.s2{background:var(--s2)} .sw.s3{background:var(--s3)} .sw.s4{background:var(--s4)}
+.detail{margin-top:10px;min-height:42px}
+.hardlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.hardlist span{padding:4px 10px;border-radius:999px;background:var(--s1);color:var(--s1-fg);font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
+.hardlist span.h0{background:var(--s0);color:var(--s0-fg)}
+.hardlist span.h2{background:var(--s2);color:var(--s2-fg)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{padding:4px 10px;border-radius:999px;font-size:13.5px;font-weight:600}
+.chip.k{background:var(--s3);color:var(--s3-fg)} .chip.s{background:var(--s2);color:var(--s2-fg)} .chip.x{background:var(--s1);color:var(--s1-fg)} .chip.u{background:var(--s0);color:var(--s0-fg)}
+.lvline{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line);font-size:15px}
+.lvline:last-child{border-bottom:0}
+.lvline.locked{opacity:.55}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;padding:8px 13px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:14px;font-weight:500}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* ---- grafice ---- */
+.chart{width:100%;height:auto;display:block;margin-top:8px}
+.ch-grid{stroke:var(--line);stroke-width:1}
+.ch-ax{fill:var(--muted);font-size:10px;font-family:var(--f-body)}
+.ch-bar{fill:var(--pen)} .ch-bar.now{fill:var(--bolt)}
+.ch-v{fill:var(--ink);font-size:10px;font-weight:600;font-family:var(--f-body)}
+.ch-target{stroke:var(--good);stroke-width:1.5;stroke-dasharray:5 4}
+.ch-tl{fill:var(--good);font-size:10px;font-weight:600;font-family:var(--f-body)}
+
+/* ---- ecranul de joc ---- */
+.play{position:fixed;inset:0;z-index:10;background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px;background-position:-1px -1px;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 16px calc(env(safe-area-inset-bottom,0px) + 12px)}
+.play-in{max-width:560px;height:100%;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.pbar{display:flex;align-items:center;gap:10px;flex:none}
+.prog{flex:1;height:12px;border-radius:8px;background:var(--card);overflow:hidden;border:1px solid var(--line)}
+.prog i{display:block;height:100%;width:0;background:var(--pen);border-radius:8px;transition:width .25s}
+.prog.timer i{background:var(--bolt);transition:none}
+.combo{display:inline-flex;align-items:center;gap:2px;padding:4px 9px;border-radius:999px;background:var(--bolt-soft);color:var(--bolt-ink);
+  font-family:var(--f-display);font-weight:800;font-size:16px;flex:none}
+.combo .ic{width:14px;height:16px}
+.combo.bump{animation:pop .45s ease}
+.pts{min-width:56px;text-align:right;font-family:var(--f-display);font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
+.stage{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;padding-block:4px}
+.stage > *{margin-block:auto}
+.ask{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
+.tag{align-self:center;font-size:13px;font-weight:600;padding:4px 11px;border-radius:999px;background:var(--pen-soft);color:var(--pen);text-align:center}
+.tag.new{background:var(--bolt-soft);color:var(--bolt-ink)}
+.q{font-family:var(--f-display);font-weight:800;font-size:clamp(46px,15vw,88px);line-height:1;display:flex;align-items:center;justify-content:center;
+  gap:.2em;flex-wrap:wrap;letter-spacing:-.02em;font-variant-numeric:tabular-nums;text-align:center}
+.q.long{font-size:clamp(36px,11vw,70px)}
+.q.sm{font-size:clamp(30px,9vw,46px)}
+.eqs{color:var(--muted)}
+.box{min-width:1.7em;height:1.22em;padding:0 .14em;border-radius:.16em;border:3px solid var(--ink);background:var(--card);
+  display:inline-flex;align-items:center;justify-content:center;color:var(--pen)}
+.box.empty::after{content:"";width:3px;height:.72em;background:var(--pen);animation:blink 1s steps(1) infinite}
+.box.ok{border-color:var(--good);color:var(--good)}
+.box.fast{border-color:var(--bolt);color:var(--bolt-ink);box-shadow:0 0 0 5px var(--bolt-soft)}
+.box.bad{border-color:var(--warn);color:var(--warn)}
+.shake{animation:shake .38s}
+.pop{animation:pop .45s ease}
+.fb{min-height:26px;text-align:center;font-weight:600;font-size:17px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.fb .ic{width:16px;height:19px}
+.fb.ok{color:var(--good)} .fb.fast{color:var(--bolt-ink)} .fb.info{color:var(--muted);font-weight:500}
+.qbtns{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:15px;font-weight:500}
+.pill .ic{width:18px;height:18px}
+.hint{width:100%;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center}
+.lines{flex:1 1 190px;min-width:0;display:flex;flex-direction:column;gap:4px;font-size:16px}
+.lines b{color:var(--pen)}
+.lines .qm{color:var(--bolt-ink)}
+
+/* pașii cu căsuțe */
+.lvl{display:flex;flex-direction:column;gap:12px;width:100%}
+.qhead{font-family:var(--f-display);font-weight:800;font-size:clamp(34px,10vw,54px);line-height:1;display:flex;align-items:center;justify-content:center;
+  gap:.2em;flex-wrap:wrap;font-variant-numeric:tabular-nums;text-align:center}
+.steps{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;display:flex;flex-direction:column}
+.row{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(20px,5.6vw,27px);line-height:2.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.slot{display:inline-flex;align-items:center;justify-content:center;min-width:1.9em;height:1.5em;padding:0 .22em;margin:0 .06em;border-radius:.3em;
+  border:2.5px dashed var(--muted);background:var(--paper);color:var(--pen);vertical-align:middle;line-height:1;font-weight:800}
+.slot.active{border:2.5px solid var(--pen);background:var(--card);box-shadow:0 0 0 4px var(--pen-soft)}
+.slot.active.empty::after{content:"";width:3px;height:.8em;background:var(--pen);animation:blink 1s steps(1) infinite}
+.slot.ok{border:2.5px solid var(--good);background:var(--ok-soft);color:var(--good)}
+.slot.given{border:0;background:none;min-width:0;padding:0;margin:0;color:var(--ink)}
+.slot.shown{border:2.5px solid var(--pen);background:var(--pen-soft);color:var(--pen)}
+.slot.helped{border:2.5px solid var(--warn);background:var(--card);color:var(--warn)}
+.mir.wait{color:var(--muted)}
+.ask2{text-align:center;font-size:15px;color:var(--muted);min-height:22px}
+.helpbox{background:var(--bolt-soft);color:var(--ink);border-radius:12px;padding:8px 12px;font-size:15px;text-align:left}
+.whys{display:flex;flex-direction:column;gap:6px;font-size:16px}
+.whys p{color:var(--muted)}
+.whys p.now{color:var(--ink);font-weight:600}
+.rule{background:var(--pen-soft);color:var(--ink);border-radius:14px;padding:10px 14px;font-size:16px;line-height:1.45}
+.visrow{display:flex;justify-content:center}
+.vis{height:auto;width:auto;max-width:100%;max-height:min(24vh,150px);flex:none}
+.vis.wide{width:100%;max-width:330px;max-height:none}
+.da{fill:var(--pen)} .db{fill:var(--bolt)} .dg{fill:none;stroke:var(--muted);stroke-width:1.2;stroke-dasharray:2 2}
+.dx{fill:var(--s0);stroke:var(--muted);stroke-width:1}
+.xl{stroke:var(--warn);stroke-width:2.2;stroke-linecap:round}
+.fr{fill:var(--card);stroke:var(--muted);stroke-width:1.4} .frl{stroke:var(--line);stroke-width:1}
+.nl{stroke:var(--ink);stroke-width:1.6} .ntk{stroke:var(--ink);stroke-width:1.2} .nl0{stroke:var(--ink);stroke-width:2.4}
+.nt{fill:var(--muted);font-size:11px;font-family:var(--f-body)} .nt0{fill:var(--ink);font-size:12px;font-weight:700;font-family:var(--f-body)}
+.nq{fill:var(--bolt-ink);font-size:13px;font-weight:700;font-family:var(--f-body)}
+.arc{fill:none;stroke:var(--bolt);stroke-width:2.6;stroke-linecap:round} .arh{fill:var(--bolt)}
+.arcl{fill:var(--ink);font-size:13px;font-weight:700;font-family:var(--f-body)}
+.jb{fill:var(--card);stroke:var(--pen);stroke-width:1.6} .jb2{fill:var(--card);stroke:var(--bolt);stroke-width:1.8}
+.jt{fill:var(--ink);font-size:13px;font-weight:700;font-family:var(--f-body)}
+/* vecinii: calculul greșit între 7 · 7 (sus) și 7 · 9 (jos) */
+.vec{display:flex;flex-direction:column;gap:12px;width:100%}
+.vrows{display:flex;flex-direction:column;gap:8px}
+.vrow{display:flex;align-items:center;justify-content:center;gap:.22em;width:100%;padding:8px 12px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--card);
+  font-family:var(--f-display);font-weight:800;font-size:clamp(28px,8.5vw,42px);line-height:1.1;font-variant-numeric:tabular-nums}
+button.vrow.act{border:2px solid var(--pen);box-shadow:0 0 0 4px var(--pen-soft)}
+button.vrow:disabled{cursor:default}
+.vrow.gone{opacity:.55}
+.vrow.tgt{border:0;background:none;padding-block:0}
+.vrow .qm{color:var(--bolt-ink)}
+.vrow s{color:var(--warn);font-size:.55em;text-decoration-thickness:3px}
+.vrow .slot{font-size:.8em}
+.slot.miss{border:2.5px dashed var(--warn);background:var(--card);color:var(--warn)}
+.learn{display:flex;flex-direction:column;gap:10px;width:100%}
+.lc{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.lc .eq{font-family:var(--f-display);font-weight:800;font-size:clamp(32px,10vw,50px);line-height:1.05;text-align:center;font-variant-numeric:tabular-nums}
+.lc .eq .ans{color:var(--pen);transition:filter .15s}
+.lc .eq s{color:var(--warn);font-size:.55em;margin-right:.25em;text-decoration-thickness:3px;vertical-align:middle}
+.lc .steps{border:0;padding:0;background:none}
+.lc .row{line-height:1.95;font-size:clamp(18px,5vw,24px)}
+.lbody{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;transition:filter .15s}
+.lc.covered .ans,.lc.covered .lbody{filter:blur(9px)}
+.cover{display:flex;flex-direction:column;align-items:center;gap:4px}
+.intro{display:flex;flex-direction:column;gap:10px;width:100%}
+.intro h2{font-size:26px}
+.intro .btn{margin-top:4px}
+input.name{font:inherit;font-size:18px;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);width:100%}
+.count{font-family:var(--f-display);font-weight:800;font-size:130px;line-height:1;text-align:center;color:var(--pen)}
+
+/* jos: tastatura, alegerile sau butoanele */
+.dock{flex:none}
+.keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.2fr);grid-auto-rows:clamp(46px,7.4vh,62px);gap:8px}
+.keys button{border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:0 3px 0 var(--line);
+  font-family:var(--f-display);font-weight:700;font-size:26px;display:grid;place-items:center;user-select:none;-webkit-user-select:none}
+.keys button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--line)}
+.keys .k-fn{color:var(--muted)}
+.keys .k-back{grid-column:4;grid-row:1}
+.keys .k-minus{grid-column:4;grid-row:2;font-size:30px}
+.keys .k-ok{grid-column:4;grid-row:3 / span 2;background:var(--pen);color:var(--on-pen);border-color:var(--pen);box-shadow:0 3px 0 var(--pen-2);font-size:22px}
+.keys .k-zero{grid-column:1 / span 3;grid-row:4}
+.keys.nominus .k-minus{display:none}
+.keys.nominus .k-ok{grid-row:2 / span 3}
+.keys.off{opacity:.35;pointer-events:none}
+.keys.ready .k-ok{box-shadow:0 3px 0 var(--pen-2),0 0 0 4px var(--pen-soft)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choices button{min-height:clamp(70px,13vh,104px);border-radius:16px;background:var(--card);border:1px solid var(--line);box-shadow:0 4px 0 var(--line);
+  font-family:var(--f-display);font-weight:800;font-size:clamp(22px,6.5vw,32px)}
+.choices button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.actions{display:flex;gap:10px}
+.actions .btn{flex:1;padding:18px 10px;font-size:18px}
+
+/* ---- după nivel ---- */
+.hero{text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center;padding-top:6px}
+.hero h1{font-size:38px}
+.hero h1.big{font-size:96px;color:var(--pen)}
+.bigstars{display:flex;justify-content:center;align-items:flex-end;gap:6px;margin:4px 0}
+.bigstars svg{width:60px;height:60px}
+.bigstars svg:nth-child(2){width:78px;height:78px}
+.bigstars .on{fill:var(--bolt);stroke:var(--bolt-ink);stroke-width:.6;animation:starIn .6s cubic-bezier(.2,1.5,.4,1) both}
+.bigstars .off{fill:var(--s0);stroke:var(--line)}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tilestat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center}
+.tilestat b{display:block;font-family:var(--f-display);font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tilestat span{font-size:13px;color:var(--muted)}
+.lvlup{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;color:var(--bolt-ink);background:var(--bolt-soft);border-radius:12px;padding:8px 12px;text-align:center}
+.lvlup .ic{width:18px;height:22px}
+.unlock{display:flex;align-items:center;gap:12px;background:var(--pen-soft);border:1.5px solid var(--pen);border-radius:16px;padding:12px 14px;animation:pop .6s .9s both}
+.unlock .ic{width:30px;height:30px;color:var(--pen)}
+.unlock.gold{background:var(--bolt-soft);border-color:var(--bolt)}
+.unlock.gold .ic{fill:var(--bolt);stroke:var(--bolt)}
+.rep{white-space:pre-wrap;word-break:break-word;font-family:var(--f-body);font-size:14px;line-height:1.5;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:12px 14px;margin:0;user-select:text;-webkit-user-select:text}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 14px);transform:translateX(-50%);z-index:40;background:var(--ink);color:var(--paper);
+  padding:10px 16px;border-radius:12px;font-weight:600;font-size:15px;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:30}
+
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+@keyframes blink{50%{opacity:0}}
+@keyframes pop{0%{transform:scale(.7)}60%{transform:scale(1.14)}100%{transform:scale(1)}}
+@keyframes starIn{0%{transform:scale(0) rotate(-120deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--pen-soft)}50%{box-shadow:0 0 0 9px var(--pen-soft)}}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (max-width:380px){.brand{font-size:26px}.cta .t{font-size:21px}.mode{grid-template-columns:60px minmax(0,1fr) 16px}.tile{font-size:15px}}
+</style>
+
+<main id="app">
+  <section class="screen" id="home" aria-label="Acasă"></section>
+  <section class="screen" id="world" hidden></section>
+  <section class="screen" id="done" hidden></section>
+  <section class="screen" id="progress" hidden></section>
+  <section class="screen" id="report" hidden></section>
+</main>
+
+<div class="play" id="play" hidden>
+  <div class="play-in">
+    <div class="pbar">
+      <button class="icon-btn" type="button" data-act="quit" aria-label="Ieși"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke-width="2.4" stroke-linecap="round"/></svg></button>
+      <div class="prog" id="prog"><i id="progfill"></i></div>
+      <span class="combo" id="combo" hidden></span>
+      <div class="pts" id="pts"></div>
+    </div>
+    <div class="stage" id="stage" aria-live="polite"></div>
+    <div class="dock">
+      <div class="keys nominus" id="keys">
+        <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+        <button type="button" data-k="back" class="k-fn k-back" aria-label="Șterge o cifră"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7z" fill="none" stroke-width="2" stroke-linejoin="round"/><path d="m11.5 9.5 5 5m0-5-5 5" fill="none" stroke-width="2" stroke-linecap="round"/></svg></button>
+        <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+        <button type="button" data-k="minus" class="k-fn k-minus" aria-label="Minus">&minus;</button>
+        <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+        <button type="button" data-k="ok" class="k-ok">OK</button>
+        <button type="button" data-k="0" class="k-zero">0</button>
+      </div>
+      <div class="choices" id="choices" hidden></div>
+      <div class="actions" id="actions" hidden></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<script>
+(function () {
+'use strict';
+
+/* =====================================================================
+   LOGICA JOCULUI (fără ecran). Se verifică separat: node test_calcul_fulger.js
+   ===================================================================== */
+const MINUS = '−', DOT = '·', ARR = '→';
+const HAS_DOM = typeof document !== 'undefined';
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+function shuffle(arr) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+const range = (a, b) => { const r = []; for (let i = a; i <= b; i++) r.push(i); return r; };
+const fmt = n => (n < 0 ? MINUS + (-n) : String(n));
+const par = n => (n < 0 ? '(' + fmt(n) + ')' : String(n));
+// Româna cere „de” de la 20 în sus: 19 calcule, 20 de calcule, 101 calcule.
+const de = n => ((n % 100 >= 20 || (n > 0 && n % 100 === 0)) ? ' de ' : ' ');
+const nr = (n, one, many) => (n === 1 ? '1 ' + one : n + de(n) + many);
+const lei = n => nr(n, 'leu', 'lei');
+const QM = '<b class="qm">?</b>';
+const B = v => '<b>' + v + '</b>';
+const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let ADMIN = false;
+
+/* ---- zile ---- */
+function dayKey(d) { d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function keyToIdx(k) { const p = k.split('-').map(Number); return Math.round(Date.UTC(p[0], p[1] - 1, p[2]) / 864e5); }
+function idxToKey(i) { const d = new Date(i * 864e5); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); }
+const dayIdx = () => keyToIdx(dayKey());
+const LUNI = ['ian.', 'feb.', 'mar.', 'apr.', 'mai', 'iun.', 'iul.', 'aug.', 'sept.', 'oct.', 'nov.', 'dec.'];
+function niceDate(k) { const p = k.split('-').map(Number); return p[2] + ' ' + LUNI[p[1] - 1]; }
+
+/* ---- cele 36 de calcule, ca pe harta de hârtie (a ≤ b, de la 2·2 la 9·9) ---- */
+const FAM = [];
+for (let a = 2; a <= 9; a++) for (let b = a; b <= 9; b++) FAM.push({ a, b, k: a + 'x' + b });
+const FAMK = {}; FAM.forEach(f => { FAMK[f.k] = f; });
+// Trucul folosit pentru un calcul: primul factor din listă care apare în calcul.
+const TRICK = [2, 5, 9, 4, 8, 3, 6, 7];
+function trickOf(x, y) { for (const f of TRICK) if (x === f || y === f) return { f, g: x === f ? y : x }; return { f: 7, g: 7 }; }
+// Ordinea în care vin calculele noi la antrenament: ca în fișe (dublul; apoi 9 și 5; apoi 3, 6, 7·7).
+const INTRO = [2, 4, 8, 9, 5, 3, 6, 7];
+
+// Sprintul de pe foaie (REC_L05), aceleași 30 de calcule, în aceeași ordine.
+const SPRINT = [[2,7],[5,6],[3,8],[9,4],[6,7],[8,5],[4,7],[7,9],[3,6],[8,8],
+  [6,9],[2,8],[7,7],[4,6],[9,3],[5,7],[8,6],[3,9],[7,8],[6,6],
+  [4,8],[9,9],[5,9],[8,7],[6,4],[3,7],[9,6],[7,5],[8,9],[4,9]];
+const SPRINT_MS = 60000, SPRINT_TARGET = 25, ROUND = 20;
+
+// Antrenamentul cu hartă: repetă calculele la câteva zile, ca să nu le uite.
+const MODES = {
+  mul: { name: 'Tabla înmulțirii', fast: 4000 },
+  div: { name: 'Împărțiri', fast: 5000 },
+  add: { name: 'Adunări și scăderi', fast: 4000 },
+};
+const TRAIN = ['mul', 'div', 'add'];
+const STATUS = ['de învățat', 'de lucrat', 'aproape', 'știi', 'știi rapid'];
+
+/* ---- desene ---- */
+const dots = (r, g, ghost, cross, hl) => ({ t: 'dots', r, g, ghost: ghost || 0, cross: !!cross, hl: hl === undefined ? -1 : hl });
+function framesAdd(big, small) { const c = []; for (let i = 0; i < big; i++) c.push(1); for (let i = 0; i < small; i++) c.push(2); return { t: 'frames', c }; }
+function framesSub(s, x) { const c = []; for (let i = 0; i < s; i++) c.push(i >= s - x ? 3 : 1); return { t: 'frames', c }; }
+
+/* ---- trucurile pentru antrenamentul cu hartă (aceleași cuvinte ca pe fișe) ---- */
+function chain(nums, last) { return nums.concat([last]).join(' ' + ARR + ' '); }
+function stuckLine(nums) {
+  for (const n of nums) if (n >= 10 && n % 10 >= 5) { const t = n - n % 10, u = n % 10; return 'Dacă te blochezi la dublul lui ' + n + ': dublul lui ' + t + ' e ' + (2 * t) + ', dublul lui ' + u + ' e ' + (2 * u) + ', deci ' + (2 * t) + ' + ' + (2 * u) + ' = ' + (2 * n) + '.'; }
+  return null;
+}
+function mulHelp(x, y) {
+  const t = trickOf(x, y), f = t.f, g = t.g, p = x * y;
+  let head, pre, post, vis, extra = null;
+  if (f === 2) { head = DOT + '2 înseamnă dublul:'; pre = g + ' + ' + g + ' = ' + QM; post = g + ' + ' + g + ' = ' + B(p); vis = dots(g, [1, 1]); }
+  else if (f === 4) { head = DOT + '4 înseamnă dublul, apoi încă o dată dublul:'; pre = chain([g, 2 * g], QM); post = chain([g, 2 * g], B(p)); vis = dots(g, [2, 2]); extra = stuckLine([g, 2 * g]); }
+  else if (f === 8) { head = DOT + '8 înseamnă de trei ori dublul:'; pre = chain([g, 2 * g, 4 * g], QM); post = chain([g, 2 * g, 4 * g], B(p)); vis = dots(g, [4, 4]); extra = stuckLine([g, 2 * g, 4 * g]); }
+  else if (f === 9) { head = DOT + '9 e aproape ' + DOT + '10. Faci ' + DOT + '10, apoi scazi ' + g + ' o dată:'; pre = g + ' ' + DOT + ' 10 = ' + (10 * g) + ', apoi ' + (10 * g) + ' ' + MINUS + ' ' + g + ' = ' + QM; post = g + ' ' + DOT + ' 10 = ' + (10 * g) + ', apoi ' + (10 * g) + ' ' + MINUS + ' ' + g + ' = ' + B(p); vis = dots(g, [9], 1, true); }
+  else if (f === 5) { head = DOT + '5 e jumătate din ' + DOT + '10. Faci ' + DOT + '10, apoi iei jumătate:'; pre = g + ' ' + DOT + ' 10 = ' + (10 * g) + ', jumătate din ' + (10 * g) + ' = ' + QM; post = g + ' ' + DOT + ' 10 = ' + (10 * g) + ', jumătate din ' + (10 * g) + ' este ' + B(p); vis = dots(g, [5], 5); if (g % 2) extra = 'Dacă te blochezi la jumătate din ' + (10 * g) + ': jumătate din ' + (10 * g - 10) + ' e ' + (5 * g - 5) + ', jumătate din 10 e 5, deci ' + (5 * g) + '.'; }
+  else if (f === 3) { head = DOT + '3 înseamnă dublul, plus încă o dată numărul:'; pre = (2 * g) + ' + ' + g + ' = ' + QM; post = (2 * g) + ' + ' + g + ' = ' + B(p); vis = dots(g, [2, 1]); }
+  else if (f === 6) { head = DOT + '6 înseamnă ' + DOT + '5, plus încă o dată numărul:'; pre = (5 * g) + ' + ' + g + ' = ' + QM; post = (5 * g) + ' + ' + g + ' = ' + B(p); vis = dots(g, [5, 1]); }
+  else { head = '7 ' + DOT + ' 7 = 7 ' + DOT + ' 5 + 7 ' + DOT + ' 2:'; pre = '35 + 14 = ' + QM; post = '35 + 14 = ' + B(49); vis = dots(7, [5, 2]); }
+  return { pre: [head, pre], post: extra ? [head, post, extra] : [head, post], vis };
+}
+function divHelp(p, d, q) {
+  return {
+    pre: ['Gândește invers: cu cât îl înmulțești pe ' + d + ' ca să iasă ' + p + '?', d + ' ' + DOT + ' ' + QM + ' = ' + p],
+    post: [p + ' : ' + d + ' = ' + B(q) + ', pentru că ' + d + ' ' + DOT + ' ' + q + ' = ' + p + '.', nr(p, 'punct', 'puncte') + ' în ' + d + ' rânduri: pe fiecare rând sunt ' + q + '.'],
+    vis: dots(d, [q], 0, false, 0),
+  };
+}
+function addHelp(x, y) {
+  const big = Math.max(x, y), small = Math.min(x, y), s = x + y;
+  if (s <= 10) return { pre: ['Pornești de la ' + big + ' și mai adaugi ' + small + '.', big + ' + ' + small + ' = ' + QM], post: ['Pornești de la ' + big + ' și mai adaugi ' + small + '.', big + ' + ' + small + ' = ' + B(s)], vis: framesAdd(big, small) };
+  const need = 10 - big, rest = small - need;
+  const a = 'Faci 10: ' + big + ' + ' + need + ' = 10.', b = 'Din ' + small + ' mai rămân ' + rest + '.';
+  return { pre: [a, b, '10 + ' + rest + ' = ' + QM], post: [a, b, '10 + ' + rest + ' = ' + B(s)], vis: framesAdd(big, small) };
+}
+function subHelp(s, x, y) {
+  if (s > 10) {
+    const down = s - 10, more = x - down;
+    const a = 'Cobori la 10: ' + s + ' ' + MINUS + ' ' + down + ' = 10.', b = 'Din ' + x + ' mai ai de scăzut ' + more + '.';
+    return { pre: [a, b, '10 ' + MINUS + ' ' + more + ' = ' + QM], post: [a, b, '10 ' + MINUS + ' ' + more + ' = ' + B(y), 'Verificare: ' + x + ' + ' + y + ' = ' + s + '.'], vis: framesSub(s, x) };
+  }
+  return { pre: ['Gândește ca la adunare:', x + ' + ' + QM + ' = ' + s], post: [s + ' ' + MINUS + ' ' + x + ' = ' + B(y) + ', pentru că ' + x + ' + ' + y + ' = ' + s + '.'], vis: framesSub(s, x) };
+}
+function famQuestion(mode, f) {
+  const a = f.a, b = f.b, flip = a !== b && Math.random() < 0.5;
+  const x = flip ? b : a, y = flip ? a : b;
+  let q;
+  if (mode === 'mul') q = Object.assign({ text: x + ' ' + DOT + ' ' + y, ans: a * b }, mulHelp(x, y));
+  else if (mode === 'div') { const p = a * b; q = Object.assign({ text: p + ' : ' + x, ans: y }, divHelp(p, x, y)); }
+  else {
+    const s = a + b;
+    if (Math.random() < 0.5) q = Object.assign({ text: x + ' + ' + y, ans: s }, addHelp(x, y));
+    else q = Object.assign({ text: s + ' ' + MINUS + ' ' + x, ans: y }, subHelp(s, x, y));
+  }
+  q.k = f.k; q.fast = MODES[mode].fast;
+  return q;
+}
+
+/* =====================================================================
+   NIVELURILE
+   Un exercițiu are: q (întrebarea), ans (răspunsul), rows (pașii: text, {s:i} = căsuța i,
+   {m:i} = aceeași valoare ca în căsuța i), slots (căsuțele: v = valoarea, ask = întrebarea care
+   ghidează, why = explicația din exemplu, help = ajutorul după o greșeală, kind = 'num' sau
+   'choice' cu opts), vis (desenul) și fk (calculul de pe hartă, dacă există).
+   ===================================================================== */
+const SL = (v, ask, why, help) => ({ kind: 'num', v, ask, why, help: help || '' });
+const CH = (v, opts, ask, why, help) => ({ kind: 'choice', v, opts, ask, why, help: help || '' });
+const mk = (q, ans, rows, slots, vis, fk) => ({ q, ans, rows, slots, vis: vis || null, fk: fk || null });
+const fkey = (m, a, b) => ({ m, k: Math.min(a, b) + 'x' + Math.max(a, b) });
+
+function dblAsk(x) { return 'Cât e dublul lui ' + x + '?'; }
+function dblHelp(x) {
+  if (x < 10) return 'Adună ' + x + ' + ' + x + '.';
+  const t = x - x % 10, u = x % 10;
+  if (!u) return 'Dublul lui ' + t / 10 + ' e ' + t / 5 + '. Acum pune un zero.';
+  return 'Dublul lui ' + t + ' e ' + 2 * t + ', dublul lui ' + u + ' e ' + 2 * u + '. Adună-le.';
+}
+function halfHelp(x) {
+  if (x <= 10) return 'Împarte ' + x + ' în două părți egale.';
+  const t = x - x % 10, u = x % 10;
+  if (!u) return (t / 10) % 2 ? 'Jumătate din ' + (t - 10) + ' e ' + (t - 10) / 2 + ', jumătate din 10 e 5. Adună-le.' : 'Jumătate din ' + t / 10 + ' e ' + t / 20 + '. Acum pune un zero.';
+  return 'Jumătate din ' + t + ' e ' + t / 2 + ', jumătate din ' + u + ' e ' + u / 2 + '. Adună-le.';
+}
+function plusHelp(a, b) {
+  if (b >= 10) {
+    if (b % 10 === 0) return 'Aduni ' + nr(b / 10, 'zece', 'zeci') + ' la ' + a + '.';
+    const t = b - b % 10; return 'Întâi zecile: ' + a + ' + ' + t + ' = ' + (a + t) + '. Apoi mai aduni ' + b % 10 + '.';
+  }
+  const u = a % 10;
+  if (u + b > 10) { const need = 10 - u; return 'Faci zeci: ' + a + ' + ' + need + ' = ' + (a + need) + '. Apoi mai aduni ' + (b - need) + '.'; }
+  if (u + b === 10) return 'Unitățile fac 10, deci treci la zecea următoare.';
+  if (a < 10) return 'Pornești de la ' + a + ' și mai numeri ' + b + '.';
+  return 'Aduni doar unitățile: ' + u + ' + ' + b + ' = ' + (u + b) + '.';
+}
+function minusHelp(a, b) {
+  if (b >= 10) {
+    if (b % 10 === 0) return 'Scazi ' + nr(b / 10, 'zece', 'zeci') + ' din ' + a + '.';
+    const t = b - b % 10; return 'Întâi zecile: ' + a + ' ' + MINUS + ' ' + t + ' = ' + (a - t) + '. Apoi mai scazi ' + b % 10 + '.';
+  }
+  const u = a % 10;
+  if (b > u) return u ? 'Cobori la zeci: ' + a + ' ' + MINUS + ' ' + u + ' = ' + (a - u) + '. Apoi mai scazi ' + (b - u) + '.' : 'Din ' + a + ' scazi 10, apoi pui înapoi ' + (10 - b) + '.';
+  if (a < 10) return 'Pornești de la ' + a + ' și numeri înapoi ' + b + '.';
+  return 'Scazi doar unitățile: ' + u + ' ' + MINUS + ' ' + b + ' = ' + (u - b) + '.';
+}
+function negHelp(x, sg, b) {
+  if (x < 0 && sg === '+') return 'Ai o datorie de ' + lei(-x) + ' și primești ' + lei(b) + '.';
+  if (x < 0) return 'Ai o datorie de ' + lei(-x) + ' și mai faci o datorie de ' + lei(b) + '.';
+  if (sg === MINUS && b > x) return 'Ai ' + lei(x) + ' și plătești ' + lei(b) + '. Îți ajung?';
+  return '';
+}
+
+/* ---- tabla înmulțirii: câte un truc pe nivel, ca pe fișe ---- */
+function mulItem(n, k, flip) {
+  const q = flip ? k + ' ' + DOT + ' ' + n : n + ' ' + DOT + ' ' + k, p = n * k, A = ' ' + ARR + ' ', fk = fkey('mul', n, k);
+  if (n === 2) return mk(q, p, [[{ s: 0 }, ' + ', { m: 0 }, ' = ', { s: 1 }]],
+    [SL(k, 'Ce număr dublezi?', DOT + '2 înseamnă dublul lui ' + k + ': ' + k + ' + ' + k + '.'),
+     SL(p, 'Cât face ' + k + ' + ' + k + '?', k + ' + ' + k + ' = ' + p + '.', k >= 6 ? plusHelp(k, k) : '')], dots(k, [1, 1]), fk);
+  if (n === 4 || n === 8) {
+    const ch = n === 4 ? [k, 2 * k, 4 * k] : [k, 2 * k, 4 * k, 8 * k], row = [String(k)];
+    ch.slice(1).forEach((v, i) => { row.push(A, { s: i }); });
+    return mk(q, p, [row], ch.slice(1).map((v, i) => SL(v, dblAsk(ch[i]), 'Dublul lui ' + ch[i] + ' e ' + v + '.', dblHelp(ch[i]))), dots(k, n === 4 ? [2, 2] : [4, 4]), fk);
+  }
+  if (n === 9) return mk(q, p, [[k + ' ' + DOT + ' 10 = ', { s: 0 }], [{ m: 0 }, ' ' + MINUS + ' ' + k + ' = ', { s: 1 }]],
+    [SL(10 * k, 'Cât face ' + k + ' ' + DOT + ' 10?', 'Întâi faci ' + DOT + '10: ' + k + ' ' + DOT + ' 10 = ' + 10 * k + '.'),
+     SL(p, 'Acum scazi ' + k + ' o dată.', 'Apoi scazi ' + k + ' o dată: ' + 10 * k + ' ' + MINUS + ' ' + k + ' = ' + p + '.', minusHelp(10 * k, k))], dots(k, [9], 1, true), fk);
+  if (n === 5) return mk(q, p, [[k + ' ' + DOT + ' 10 = ', { s: 0 }], ['jumătate din ', { m: 0 }, ' = ', { s: 1 }]],
+    [SL(10 * k, 'Cât face ' + k + ' ' + DOT + ' 10?', 'Întâi faci ' + DOT + '10: ' + k + ' ' + DOT + ' 10 = ' + 10 * k + '.'),
+     SL(p, 'Cât e jumătate din ' + 10 * k + '?', 'Apoi iei jumătate: jumătate din ' + 10 * k + ' e ' + p + '.', halfHelp(10 * k))], dots(k, [5], 5), fk);
+  if (n === 3) return mk(q, p, [[k + ' ' + DOT + ' 2 = ', { s: 0 }], [{ m: 0 }, ' + ' + k + ' = ', { s: 1 }]],
+    [SL(2 * k, dblAsk(k), 'Întâi dublul: ' + k + ' ' + DOT + ' 2 = ' + 2 * k + '.', dblHelp(k)),
+     SL(p, 'Acum adaugi încă o dată ' + k + '.', 'Apoi încă o dată ' + k + ': ' + 2 * k + ' + ' + k + ' = ' + p + '.', plusHelp(2 * k, k))], dots(k, [2, 1]), fk);
+  if (n === 6) return mk(q, p, [[k + ' ' + DOT + ' 5 = ', { s: 0 }], [{ m: 0 }, ' + ' + k + ' = ', { s: 1 }]],
+    [SL(5 * k, 'Cât face ' + k + ' ' + DOT + ' 5?', 'Întâi ' + DOT + '5: ' + k + ' ' + DOT + ' 5 = ' + 5 * k + '.', 'Faci ' + k + ' ' + DOT + ' 10 = ' + 10 * k + ', apoi iei jumătate.'),
+     SL(p, 'Acum adaugi încă o dată ' + k + '.', 'Apoi încă o dată ' + k + ': ' + 5 * k + ' + ' + k + ' = ' + p + '.', plusHelp(5 * k, k))], dots(k, [5, 1]), fk);
+  return mk(q, p, [[k + ' ' + DOT + ' 5 = ', { s: 0 }], [k + ' ' + DOT + ' 2 = ', { s: 1 }], [{ m: 0 }, ' + ', { m: 1 }, ' = ', { s: 2 }]],
+    [SL(5 * k, 'Cât face ' + k + ' ' + DOT + ' 5?', 'Întâi ' + DOT + '5: ' + k + ' ' + DOT + ' 5 = ' + 5 * k + '.', 'Faci ' + k + ' ' + DOT + ' 10 = ' + 10 * k + ', apoi iei jumătate.'),
+     SL(2 * k, dblAsk(k), 'Apoi ' + DOT + '2: ' + k + ' ' + DOT + ' 2 = ' + 2 * k + '.', dblHelp(k)),
+     SL(p, 'Adună cele două rezultate.', 'Le aduni: ' + 5 * k + ' + ' + 2 * k + ' = ' + p + '.', plusHelp(5 * k, 2 * k))], dots(k, [5, 2]), fk);
+}
+
+/* ---- vecinii: ajutorul după o greșeală la tablă ----
+   7 · 8 greșit: deasupra apare 7 · 7, dedesubt 7 · 9. Dacă știe unul dintre ei, află 7 · 8 din el:
+   7 · 8 = 7 · 9 − 7 sau 7 · 8 = 7 · 7 + 7. Dacă nu știe niciunul, face pașii trucului. */
+function mulXY(q) { const m = /^(\d) · (\d)$/.exec(q); return m ? [+m[1], +m[2]] : null; }
+function nbCands(x, y) { return [y - 1, y + 1].map(z => ({ z, v: x * z, q: x + ' ' + DOT + ' ' + z, fk: z >= 2 && z <= 9 ? fkey('mul', x, z) : null })); }
+// Vecinul deschis la început: ·1 și ·10 (sigure), apoi ·2 și ·5, apoi pătratul (7 · 7), apoi cel de sus.
+function nbFirst(x, c) { const rank = o => (o.z === 1 || o.z === 10 ? 0 : (o.z === 2 || o.z === 5 ? 1 : (o.z === x ? 2 : 3))); return rank(c[1]) < rank(c[0]) ? 1 : 0; }
+function nbBridge(x, y, c) {
+  const p = x * y, up = c.z < y, tq = x + ' ' + DOT + ' ' + y, op = up ? ' + ' : ' ' + MINUS + ' ';
+  return mk(tq, p, [[tq + ' = ' + c.v + op + x + ' = ', { s: 0 }]],
+    [SL(p, tq + ' e cu un ' + x + (up ? ' mai mult' : ' mai puțin') + ' decât ' + c.q + '.', c.q + ' = ' + c.v + ', deci ' + tq + ' = ' + c.v + op + x + ' = ' + p + '.', up ? plusHelp(c.v, x) : minusHelp(c.v, x))],
+    up ? dots(x, [c.z, 1]) : dots(x, [y], 1, true), fkey('mul', x, y));
+}
+// Pașii trucului pentru x · y, scris exact așa (nu y · x).
+function nbSteps(x, y) { const t = trickOf(x, y); return mulItem(t.f, t.g, t.f !== x); }
+
+/* ---- împărțiri ---- */
+function divItem(d, k) {
+  const p = d * k, q = p + ' : ' + d, fk = d <= 9 ? fkey('div', d, k) : null;
+  if (d === 2) return mk(q, k, [['2 ' + DOT + ' ', { s: 0 }, ' = ' + p]],
+    [SL(k, 'Ce număr, dublat, dă ' + p + '?', 'Căutăm numărul care, dublat, dă ' + p + ': e ' + k + ', pentru că 2 ' + DOT + ' ' + k + ' = ' + p + '.', halfHelp(p))], dots(2, [k], 0, false, 0), fk);
+  if (d === 10) return mk(q, k, [[p + ' : 10 = ', { s: 0 }]], [SL(k, 'Tai zeroul de la sfârșit.', 'La : 10 tai zeroul: ' + p + ' : 10 = ' + k + '.')], null, null);
+  if (d === 5) return mk(q, k, [['dublul lui ' + p + ' = ', { s: 0 }], [{ m: 0 }, ' : 10 = ', { s: 1 }]],
+    [SL(2 * p, dblAsk(p), 'Întâi dublezi: dublul lui ' + p + ' e ' + 2 * p + '.', dblHelp(p)),
+     SL(k, 'Acum tai zeroul.', 'Apoi tai zeroul: ' + 2 * p + ' : 10 = ' + k + '.')], null, fk);
+  if (d === 4 || d === 8) {
+    const ch = d === 4 ? [p, p / 2, p / 4] : [p, p / 2, p / 4, p / 8];
+    return mk(q, k, ch.slice(1).map((v, i) => ['jumătate din ', i ? { m: i - 1 } : String(p), ' = ', { s: i }]),
+      ch.slice(1).map((v, i) => SL(v, 'Cât e jumătate din ' + ch[i] + '?', 'Jumătate din ' + ch[i] + ' e ' + v + '.', halfHelp(ch[i]))), null, fk);
+  }
+  return mk(q, k, [[d + ' ' + DOT + ' ', { s: 0 }, ' = ' + p]],
+    [SL(k, 'Ce număr înmulțit cu ' + d + ' dă ' + p + '?', 'Căutăm numărul: ' + d + ' ' + DOT + ' ' + k + ' = ' + p + ', deci ' + p + ' : ' + d + ' = ' + k + '.',
+      k > 5 ? 'Pornește de la ' + d + ' ' + DOT + ' 5 = ' + 5 * d + '.' : 'Spune tabla lui ' + d + ': ' + d + ', ' + 2 * d + ', ...')], dots(d, [k], 0, false, 0), fk);
+}
+
+/* ---- adunări și scăderi până la 20 ---- */
+function tenItem(k) {
+  return mk('10 ' + MINUS + ' ' + k, 10 - k, [[k + ' + ', { s: 0 }, ' = 10']],
+    [SL(10 - k, 'Câte îi trebuie lui ' + k + ' până la 10?', k + ' și ' + (10 - k) + ' fac 10.')], framesAdd(k, 10 - k), null);
+}
+function add20Item(x, y) {
+  const big = Math.max(x, y), small = Math.min(x, y), s = x + y, need = 10 - big, rest = small - need, q = x + ' + ' + y;
+  return mk(q, s, [[q + ' = ' + big + ' + ', { s: 0 }, ' + ', { s: 1 }], ['= 10 + ', { m: 1 }, ' = ', { s: 2 }]],
+    [SL(need, 'Câte îi trebuie lui ' + big + ' până la 10?', 'Pornești de la ' + big + '. Îi trebuie ' + need + ' până la 10.'),
+     SL(rest, 'Din ' + small + ' ai dat ' + need + '. Cât mai rămâne?', 'Din ' + small + ' ai dat ' + need + ', mai rămân ' + rest + '.'),
+     SL(s, 'Cât face 10 + ' + rest + '?', '10 + ' + rest + ' = ' + s + '.')], framesAdd(big, small), fkey('add', x, y));
+}
+function sub20Item(s, x) {
+  const y = s - x, down = s - 10, more = x - down, q = s + ' ' + MINUS + ' ' + x;
+  return mk(q, y, [[q + ' = ' + s + ' ' + MINUS + ' ', { s: 0 }, ' ' + MINUS + ' ', { s: 1 }], ['= 10 ' + MINUS + ' ', { m: 1 }, ' = ', { s: 2 }]],
+    [SL(down, 'Cât scazi din ' + s + ' ca să ajungi la 10?', 'Întâi cobori la 10: din ' + s + ' scazi ' + down + '.'),
+     SL(more, 'Din ' + x + ' ai scăzut ' + down + '. Cât mai ai de scăzut?', 'Din ' + x + ' ai scăzut ' + down + ', mai ai ' + more + '.'),
+     SL(y, 'Cât face 10 ' + MINUS + ' ' + more + '?', '10 ' + MINUS + ' ' + more + ' = ' + y + '.')], framesSub(s, x), fkey('add', x, y));
+}
+const ADD_PAIRS = []; for (let x = 2; x <= 9; x++) for (let y = 2; y <= 9; y++) if (x + y > 10) ADD_PAIRS.push([x, y]);
+const SUB_PAIRS = ADD_PAIRS.map(p => [p[0] + p[1], p[0]]);
+
+/* ---- numere mari ---- */
+function tensItem() {
+  let a; do { a = rnd(12, 89); } while (a % 10 === 0);
+  const ta = Math.floor(a / 10), u = a % 10;
+  if (Math.random() < 0.5 && ta <= 8) {
+    const t = rnd(1, 9 - ta), T = 10 * t, ans = a + T, q = a + ' + ' + T;
+    return mk(q, ans, [['zecile: ' + ta + ' + ' + t + ' = ', { s: 0 }], ['deci ' + q + ' = ', { s: 1 }]],
+      [SL(ta + t, 'Câte zeci ai în total?', a + ' are ' + ta + ' zeci. Mai adaugi ' + t + ': ' + ta + ' + ' + t + ' = ' + (ta + t) + ' zeci.'),
+       SL(ans, 'Zecile noi, iar unitățile rămân ' + u + '.', 'Unitățile rămân ' + u + ', deci rezultatul e ' + ans + '.')], { t: 'jumps', start: a, steps: [T] }, null);
+  }
+  const t = rnd(1, ta), T = 10 * t, ans = a - T, q = a + ' ' + MINUS + ' ' + T;
+  return mk(q, ans, [['zecile: ' + ta + ' ' + MINUS + ' ' + t + ' = ', { s: 0 }], ['deci ' + q + ' = ', { s: 1 }]],
+    [SL(ta - t, 'Câte zeci rămân?', a + ' are ' + ta + ' zeci. Scazi ' + t + ': ' + ta + ' ' + MINUS + ' ' + t + ' = ' + (ta - t) + ' zeci.'),
+     SL(ans, 'Zecile rămase, iar unitățile rămân ' + u + '.', 'Unitățile rămân ' + u + ', deci rezultatul e ' + ans + '.')], { t: 'jumps', start: a, steps: [-T] }, null);
+}
+function over10Item() {
+  let n, u; do { n = rnd(12, 88); u = n % 10; } while (u < 2);
+  const d = rnd(11 - u, 9), need = 10 - u, rest = d - need, T = n + need, ans = n + d, q = n + ' + ' + d;
+  return mk(q, ans, [[q + ' = ' + n + ' + ', { s: 0 }, ' + ', { s: 1 }], ['= ', { s: 2 }, ' + ', { m: 1 }, ' = ', { s: 3 }]],
+    [SL(need, 'Câte îi trebuie lui ' + n + ' până la ' + T + '?', 'Faci zeci: lui ' + n + ' îi trebuie ' + need + ' până la ' + T + '.'),
+     SL(rest, 'Din ' + d + ' ai dat ' + need + '. Cât mai rămâne?', 'Din ' + d + ' ai dat ' + need + ', mai rămân ' + rest + '.'),
+     SL(T, 'Cât face ' + n + ' + ' + need + '?', n + ' + ' + need + ' = ' + T + '.'),
+     SL(ans, 'Cât face ' + T + ' + ' + rest + '?', T + ' + ' + rest + ' = ' + ans + '.')], { t: 'jumps', start: n, steps: [need, rest] }, null);
+}
+function under10Item() {
+  let n, u; do { n = rnd(21, 98); u = n % 10; } while (u < 1 || u > 8);
+  const d = rnd(u + 1, 9), more = d - u, T = n - u, ans = n - d, q = n + ' ' + MINUS + ' ' + d;
+  return mk(q, ans, [[q + ' = ' + n + ' ' + MINUS + ' ', { s: 0 }, ' ' + MINUS + ' ', { s: 1 }], ['= ', { s: 2 }, ' ' + MINUS + ' ', { m: 1 }, ' = ', { s: 3 }]],
+    [SL(u, 'Cât scazi din ' + n + ' ca să ajungi la ' + T + '?', 'Cobori la zeci: din ' + n + ' scazi ' + u + ' și ajungi la ' + T + '.'),
+     SL(more, 'Din ' + d + ' ai scăzut ' + u + '. Cât mai ai de scăzut?', 'Din ' + d + ' ai scăzut ' + u + ', mai ai ' + more + '.'),
+     SL(T, 'Cât face ' + n + ' ' + MINUS + ' ' + u + '?', n + ' ' + MINUS + ' ' + u + ' = ' + T + '.'),
+     SL(ans, 'Cât face ' + T + ' ' + MINUS + ' ' + more + '?', T + ' ' + MINUS + ' ' + more + ' = ' + ans + '.', minusHelp(T, more))], { t: 'jumps', start: n, steps: [-u, -more] }, null);
+}
+function twoAddItem() {
+  const carry = Math.random() < 0.7; let a, b;
+  do { a = rnd(13, 79); b = rnd(13, 79); } while (b % 10 === 0 || (carry ? a % 10 + b % 10 < 10 : a % 10 + b % 10 >= 10));
+  const t = b - b % 10, u = b % 10, T = a + t, ans = a + b, q = a + ' + ' + b;
+  return mk(q, ans, [[q + ' = ' + a + ' + ', { s: 0 }, ' + ', { s: 1 }], ['= ', { s: 2 }, ' + ', { m: 1 }, ' = ', { s: 3 }]],
+    [SL(t, 'Scrie ' + b + ' ca zeci plus unități. Partea cu zeci (se termină în 0)?', 'Desfaci ' + b + ' în zeci și unități: ' + b + ' = ' + t + ' + ' + u + '.'),
+     SL(u, 'Și unitățile?', 'Unitățile lui ' + b + ' sunt ' + u + '.'),
+     SL(T, 'Cât face ' + a + ' + ' + t + '? Aduni doar zecile.', 'Întâi zecile: ' + a + ' + ' + t + ' = ' + T + '.'),
+     SL(ans, 'Cât face ' + T + ' + ' + u + '?', 'Apoi unitățile: ' + T + ' + ' + u + ' = ' + ans + '.', plusHelp(T, u))], { t: 'jumps', start: a, steps: [t, u] }, null);
+}
+function twoSubItem() {
+  const borrow = Math.random() < 0.7; let a, b;
+  do { a = rnd(31, 99); b = rnd(12, a - 6); } while (b % 10 === 0 || (borrow ? b % 10 <= a % 10 : b % 10 > a % 10));
+  const t = b - b % 10, u = b % 10, T = a - t, ans = a - b, q = a + ' ' + MINUS + ' ' + b;
+  return mk(q, ans, [[q + ' = ' + a + ' ' + MINUS + ' ', { s: 0 }, ' ' + MINUS + ' ', { s: 1 }], ['= ', { s: 2 }, ' ' + MINUS + ' ', { m: 1 }, ' = ', { s: 3 }]],
+    [SL(t, 'Scrie ' + b + ' ca zeci plus unități. Partea cu zeci (se termină în 0)?', 'Desfaci ' + b + ' în zeci și unități: ' + b + ' = ' + t + ' + ' + u + '.'),
+     SL(u, 'Și unitățile?', 'Unitățile lui ' + b + ' sunt ' + u + '.'),
+     SL(T, 'Cât face ' + a + ' ' + MINUS + ' ' + t + '? Scazi doar zecile.', 'Întâi zecile: ' + a + ' ' + MINUS + ' ' + t + ' = ' + T + '.'),
+     SL(ans, 'Cât face ' + T + ' ' + MINUS + ' ' + u + '?', 'Apoi unitățile: ' + T + ' ' + MINUS + ' ' + u + ' = ' + ans + '.', minusHelp(T, u))], { t: 'jumps', start: a, steps: [-t, -u] }, null);
+}
+
+/* ---- numere negative: bani și datorii, ca în EVN_L02 și Fișa I03 ---- */
+function debtItem() {
+  let a, b; do { a = rnd(1, 10); b = rnd(1, 10); } while (a === b);
+  const q = MINUS + a + ' + ' + b, ans = b - a, big = Math.max(a, b), small = Math.min(a, b), debtBig = a > b;
+  return mk(q, ans,
+    [['Ai o datorie de ' + lei(a) + ' și primești ' + lei(b) + '. Ce e mai mare? ', { s: 0 }], ['Diferența: ' + big + ' ' + MINUS + ' ' + small + ' = ', { s: 1 }], ['Deci ' + q + ' = ', { s: 2 }]],
+    [CH(debtBig ? 'datoria' : 'banii', ['datoria', 'banii'], 'Compară ' + a + ' cu ' + b + '.', debtBig ? 'Datoria (' + lei(a) + ') e mai mare decât banii (' + lei(b) + ').' : 'Banii (' + lei(b) + ') sunt mai mulți decât datoria (' + lei(a) + ').'),
+     SL(big - small, 'Cât face ' + big + ' ' + MINUS + ' ' + small + '?', big + ' ' + MINUS + ' ' + small + ' = ' + (big - small) + '.'),
+     SL(ans, debtBig ? 'Datoria e mai mare, deci rezultatul are minus.' : 'Banii sunt mai mulți, deci rezultatul e pozitiv.', debtBig ? 'Rămâi dator cu ' + lei(a - b) + ': ' + fmt(ans) + '.' : 'Plătești datoria și îți rămân bani: ' + ans + '.')],
+    { t: 'line', from: -a, to: ans }, null);
+}
+function spendItem() {
+  const a = rnd(1, 9), b = rnd(a + 1, 12), ans = a - b, q = a + ' ' + MINUS + ' ' + b;
+  return mk(q, ans, [['Ai ' + lei(a) + ' și plătești ' + lei(b) + '.'], ['Îți lipsesc: ' + b + ' ' + MINUS + ' ' + a + ' = ', { s: 0 }], ['Deci ' + q + ' = ', { s: 1 }]],
+    [SL(b - a, 'Cât face ' + b + ' ' + MINUS + ' ' + a + '?', 'Îți lipsesc ' + b + ' ' + MINUS + ' ' + a + ' = ' + (b - a) + ' lei.'),
+     SL(ans, 'Îți lipsesc bani, deci e o datorie: rezultatul are minus.', 'Rămâi dator cu ' + lei(b - a) + ': ' + fmt(ans) + '.')],
+    { t: 'line', from: a, to: ans }, null);
+}
+function doubleDebtItem() {
+  const a = rnd(1, 10), b = rnd(1, 10), ans = -(a + b), q = MINUS + a + ' ' + MINUS + ' ' + b;
+  return mk(q, ans, [['Ai o datorie de ' + lei(a) + ' și mai faci una de ' + lei(b) + '.'], ['Datoria totală: ' + a + ' + ' + b + ' = ', { s: 0 }], ['Deci ' + q + ' = ', { s: 1 }]],
+    [SL(a + b, 'Cât face ' + a + ' + ' + b + '?', 'Datoriile se adună: ' + a + ' + ' + b + ' = ' + (a + b) + '.'),
+     SL(ans, 'E tot datorie, deci rezultatul are minus.', 'Rezultatul e o datorie: ' + fmt(ans) + '.')],
+    { t: 'line', from: -a, to: ans }, null);
+}
+function signPool() { const known = FAM.filter(f => S.modes.mul.f[f.k].l >= 3); return known.length >= 6 ? known : FAM.filter(f => f.a === 2 || f.b === 2 || f.a === 5 || f.b === 5); }
+function signItem(op) {
+  const f = pick(signPool()); let x = f.a, y = f.b; if (Math.random() < 0.5) { const t = x; x = y; y = t; }
+  let s1 = pick([1, -1]), s2 = pick([1, -1]); if (s1 === 1 && s2 === 1) { if (Math.random() < 0.5) s1 = -1; else s2 = -1; }
+  const same = s1 === s2, sg = same ? '+' : MINUS, w = n => (n > 0 ? 'plus' : 'minus');
+  let q, ans, abs, absTxt;
+  if (op === 'mul') { const X = s1 * x, Y = s2 * y; q = fmt(X) + ' ' + DOT + ' ' + par(Y); ans = X * Y; abs = x * y; absTxt = x + ' ' + DOT + ' ' + y; }
+  else { const P = s1 * x * y, D = s2 * x; q = fmt(P) + ' : ' + par(D); ans = P / D; abs = y; absTxt = (x * y) + ' : ' + x; }
+  return mk(q, ans, [['Semnele: ' + w(s1) + ' și ' + w(s2) + '. Rezultatul are semnul ', { s: 0 }], ['Fără semne: ' + absTxt + ' = ', { s: 1 }], ['Deci ' + q + ' = ', { s: 2 }]],
+    [CH(sg, ['+', MINUS], 'Semne la fel dau +. Semne diferite dau ' + MINUS + '.', same ? 'Semne la fel: rezultatul e pozitiv.' : 'Semne diferite: rezultatul e negativ.'),
+     SL(abs, 'Cât face ' + absTxt + '?', absTxt + ' = ' + abs + '.'),
+     SL(ans, same ? 'Rezultatul e pozitiv: scrie numărul fără minus.' : 'Pune minus în fața numărului.', 'Deci rezultatul e ' + fmt(ans) + '.')], null, null);
+}
+function twoSignsItem() {
+  const a = rnd(1, 10), b = rnd(1, 10), form = rnd(1, 4), first = form === 1 || form === 3 ? a : -a;
+  let q, sg, ans;
+  if (form === 1) { q = a + ' ' + MINUS + ' (' + MINUS + b + ')'; sg = '+'; ans = a + b; }
+  else if (form === 2) { q = MINUS + a + ' ' + MINUS + ' (' + MINUS + b + ')'; sg = '+'; ans = b - a; }
+  else if (form === 3) { q = a + ' + (' + MINUS + b + ')'; sg = MINUS; ans = a - b; }
+  else { q = MINUS + a + ' + (' + MINUS + b + ')'; sg = MINUS; ans = -a - b; }
+  const pair = sg === '+' ? MINUS + ' și ' + MINUS : '+ și ' + MINUS;
+  return mk(q, ans, [['Semnele lipite: ' + pair + ' devin ', { s: 0 }], ['Rescrii: ' + fmt(first) + ' ', { m: 0 }, ' ' + b + ' = ', { s: 1 }]],
+    [CH(sg, ['+', MINUS], 'Două semne lipite: ' + MINUS + ' și ' + MINUS + ' fac +, iar + și ' + MINUS + ' fac ' + MINUS + '.', pair + ' lipite fac ' + sg + '.'),
+     SL(ans, 'Acum calculează ' + fmt(first) + ' ' + sg + ' ' + b + '.', 'Rezultatul e ' + fmt(ans) + '.', negHelp(first, sg, b))], null, null);
+}
+
+/* ---- lumile și nivelurile ---- */
+const MUL_ORDER = [2, 4, 8, 9, 5, 3, 6, 7];
+const MUL_EX = { 2: '2 · 7 = 7 + 7', 4: '4 · 7: 7 → 14 → 28', 8: '8 · 7: 7 → 14 → 28 → 56', 9: '9 · 7 = 70 − 7', 5: '5 · 8: jumătate din 80', 3: '3 · 7 = 14 + 7', 6: '6 · 7 = 35 + 7', 7: '7 · 8 = 40 + 16' };
+const MUL_RULE = {
+  2: '·2 înseamnă dublul: aduni numărul cu el însuși. 2 · 7 = 7 + 7 = 14.',
+  4: '·4 înseamnă dublul, apoi încă o dată dublul. 4 · 7: 7 → 14 → 28.',
+  8: '·8 înseamnă de trei ori dublul. 8 · 7: 7 → 14 → 28 → 56.',
+  9: '·9 e aproape ·10. Faci ·10, apoi scazi numărul o dată. 9 · 7 = 70 − 7 = 63.',
+  5: '·5 e jumătate din ·10. Faci ·10, apoi iei jumătate. 5 · 8: 8 · 10 = 80, jumătate din 80 e 40.',
+  3: '·3 înseamnă dublul, plus încă o dată numărul. 3 · 7 = 14 + 7 = 21.',
+  6: '·6 înseamnă ·5, plus încă o dată numărul. 6 · 7 = 35 + 7 = 42.',
+  7: '·7 înseamnă ·5 plus ·2. 7 · 8 = 40 + 16 = 56.',
+};
+const MUL_PRAISE = { 2: ['Ai făcut dublul corect!'], 4: ['Dublul, de două ori. Perfect!'], 8: ['Trei dubluri la rând. Tare!'], 9: ['Trucul lui 9 merge!'], 5: ['Jumătate din zeci. Exact!'], 3: ['Dublul, plus încă o dată. Bravo!'], 6: ['Trucul lui 6, corect!'], 7: ['Cinci plus doi. Exact!'] };
+// La tablă, trucul e doar un pod: 2 exemple și 3 de completat (nf), apoi 12 din memorie (ns).
+// Celelalte lumi: 7 de completat și 8 singur. Pătratele se țin minte și sunt vecini buni.
+const WORLDS = [
+  { id: 'mul', name: 'Tabla înmulțirii', tile: '7' + DOT + '8', levels: MUL_ORDER.map(n => ({
+      id: 'mul' + n, name: 'Tabla lui ' + n, short: DOT + n, ex: MUL_EX[n], rule: MUL_RULE[n], praise: MUL_PRAISE[n], fast: 4000, nf: 3, ns: 12,
+      pool: () => shuffle(range(2, 9)).map(k => ({ k, flip: Math.random() < 0.5 })), make: p => mulItem(n, p.k, p.flip) }))
+    .concat([{ id: 'mulP', name: 'Pătratele', short: 'pătratele', ex: '7 · 7 = 49', fast: 4000, nf: 3, ns: 12, praise: ['Pătratul, pe de rost!'],
+      rule: 'Pătratele: un număr înmulțit cu el însuși. 2 · 2 = 4, 3 · 3 = 9, 4 · 4 = 16 și tot așa, până la 9 · 9 = 81. Pe ele le ții minte. Sunt vecini buni: știi 7 · 7 = 49, deci 7 · 8 = 49 + 7 = 56.',
+      pool: () => shuffle(range(2, 9)).map(k => ({ k })), make: p => mulItem(p.k, p.k, false) },
+    { id: 'mulB', name: 'Toată tabla', short: 'toată tabla', boss: true, trophy: 'Stăpânul tablei', ex: 'toate cele 36 de calcule, amestecate', fast: 4000,
+      rule: 'Nivelul final: toată tabla, amestecată. La fiecare calcul folosești trucul potrivit.',
+      pool: () => shuffle(FAM).map(f => ({ f, flip: Math.random() < 0.5 })), make: p => { const t = trickOf(p.f.a, p.f.b); return mulItem(t.f, t.g, p.flip); } }]) },
+  { id: 'div', name: 'Împărțiri', tile: '56 : 8', levels: [
+    { id: 'div2', name: 'Împărțirea la 2', short: ':2', ex: '14 : 2', fast: 5000, rule: 'Împărțirea e înmulțirea pe dos. 14 : 2 = ? înseamnă: ce număr, dublat, dă 14? E 7.', pool: () => shuffle(range(2, 9)), make: k => divItem(2, k) },
+    { id: 'div10', name: 'Împărțirea la 10', short: ':10', ex: '70 : 10', fast: 4000, rule: 'La : 10 tai zeroul de la sfârșit. 70 : 10 = 7 și 120 : 10 = 12.', pool: () => shuffle(range(2, 15)), make: k => divItem(10, k) },
+    { id: 'div5', name: 'Împărțirea la 5', short: ':5', ex: '35 : 5', fast: 6000, rule: 'La : 5 dublezi, apoi tai zeroul. 35 : 5: dublul lui 35 e 70, iar 70 : 10 = 7.', pool: () => shuffle(range(2, 9)), make: k => divItem(5, k) },
+    { id: 'div48', name: 'Împărțirea la 4 și la 8', short: ':4 și :8', ex: '28 : 4', fast: 6000, rule: ':4 înseamnă jumătate, apoi încă o dată jumătate. :8 înseamnă de trei ori jumătate. 28 : 4: 28 → 14 → 7.', pool: () => shuffle([4, 8].flatMap(d => range(2, 9).map(k => ({ d, k })))), make: p => divItem(p.d, p.k) },
+    { id: 'divX', name: 'La 3, 6, 7 și 9', short: ':3 :6 :7 :9', ex: '54 : 6', fast: 6000, rule: 'Gândești invers: 54 : 6 = ? înseamnă 6 · ? = 54. Spui tabla lui 6 până ajungi la 54: e 9.', pool: () => shuffle([3, 6, 7, 9].flatMap(d => range(2, 9).map(k => ({ d, k })))), make: p => divItem(p.d, p.k) },
+    { id: 'divB', name: 'Toate împărțirile', short: 'toate', boss: true, trophy: 'Stăpânul împărțirilor', ex: 'din toată tabla, amestecate', fast: 5000, rule: 'Nivelul final: împărțiri din toată tabla, amestecate.', pool: () => shuffle(FAM).map(f => (Math.random() < 0.5 ? { d: f.a, k: f.b } : { d: f.b, k: f.a })), make: p => divItem(p.d, p.k) },
+  ] },
+  { id: 'add', name: 'Adunări și scăderi', tile: '8 + 5', levels: [
+    { id: 'add10', name: 'Perechile lui 10', short: 'perechile lui 10', ex: '7 + ? = 10', fast: 3000, rule: 'Perechile care fac 10: 1 și 9, 2 și 8, 3 și 7, 4 și 6, 5 și 5. Le folosești la toate trucurile de mai departe.', pool: () => shuffle(range(1, 9)), make: k => tenItem(k) },
+    { id: 'addUp', name: 'Adunarea peste 10', short: '8 + 5', ex: '8 + 5 = 8 + 2 + 3', fast: 5000, rule: 'Faci 10: 8 + 5 = 8 + 2 + 3 = 10 + 3 = 13. Pornești de la numărul mai mare.', pool: () => shuffle(ADD_PAIRS), make: p => add20Item(p[0], p[1]) },
+    { id: 'addDown', name: 'Scăderea peste 10', short: '13 − 5', ex: '13 − 5 = 13 − 3 − 2', fast: 5000, rule: 'Cobori la 10: 13 − 5 = 13 − 3 − 2 = 10 − 2 = 8.', pool: () => shuffle(SUB_PAIRS), make: p => sub20Item(p[0], p[1]) },
+    { id: 'addB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul lui 10', ex: 'adunări și scăderi peste 10', fast: 4000, rule: 'Nivelul final: adunări și scăderi peste 10, amestecate.', pool: () => shuffle(ADD_PAIRS.map(p => ({ t: 'a', p })).concat(SUB_PAIRS.map(p => ({ t: 's', p })))), make: x => (x.t === 'a' ? add20Item(x.p[0], x.p[1]) : sub20Item(x.p[0], x.p[1])) },
+  ] },
+  { id: 'big', name: 'Numere mari', tile: '56 + 6', levels: [
+    { id: 'big1', name: 'Zeci întregi', short: '47 + 30', ex: '47 + 30 și 77 − 30', fast: 6000, rule: 'Când aduni sau scazi zeci întregi, se schimbă doar zecile. Unitățile rămân la fel: 47 + 30 = 77.', gen: tensItem },
+    { id: 'big2', name: 'Peste zeci', short: '56 + 6', ex: '56 + 6 = 56 + 4 + 2', fast: 8000, rule: 'Faci zeci: 56 + 6 = 56 + 4 + 2 = 60 + 2 = 62. Îi dai lui 56 cât îi trebuie până la 60.', gen: over10Item },
+    { id: 'big3', name: 'Sub zeci', short: '53 − 7', ex: '53 − 7 = 53 − 3 − 4', fast: 8000, rule: 'Cobori la zeci: 53 − 7 = 53 − 3 − 4 = 50 − 4 = 46.', gen: under10Item },
+    { id: 'big4', name: 'Două numere: adunare', short: '38 + 45', ex: '38 + 45 = 38 + 40 + 5', fast: 12000, rule: 'Desfaci al doilea număr în zeci și unități: 38 + 45 = 38 + 40 + 5 = 78 + 5 = 83.', gen: twoAddItem },
+    { id: 'big5', name: 'Două numere: scădere', short: '72 − 38', ex: '72 − 38 = 72 − 30 − 8', fast: 14000, rule: 'La fel, cu minus: 72 − 38 = 72 − 30 − 8 = 42 − 8 = 34.', gen: twoSubItem },
+    { id: 'bigB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul numerelor mari', ex: 'toate tipurile', fast: 10000, rule: 'Nivelul final: toate tipurile, amestecate.', gen: () => pick([tensItem, over10Item, under10Item, twoAddItem, twoSubItem])() },
+  ] },
+  { id: 'neg', name: 'Numere negative', tile: MINUS + '6 + 4', levels: [
+    { id: 'neg1', name: 'Datorie și bani', short: '−6 + 4', ex: '−6 + 4', fast: 7000, rule: 'Un număr cu minus e o datorie. −6 + 4: ai o datorie de 6 lei și primești 4. Datoria e mai mare, deci rămâi dator cu 2: −6 + 4 = −2.', gen: debtItem },
+    { id: 'neg2', name: 'Cheltui mai mult', short: '4 − 9', ex: '4 − 9', fast: 7000, rule: '4 − 9: ai 4 lei și plătești 9. Îți lipsesc 5, deci rămâi dator: 4 − 9 = −5.', gen: spendItem },
+    { id: 'neg3', name: 'Datorie peste datorie', short: '−3 − 5', ex: '−3 − 5', fast: 6000, rule: '−3 − 5: ai o datorie de 3 și mai faci una de 5. Datoriile se adună: −3 − 5 = −8.', gen: doubleDebtItem },
+    { id: 'neg4', name: 'Semnele la înmulțire', short: 'semnele la ·', ex: '−3 · (−4)', fast: 7000, rule: 'Semne la fel dau +. Semne diferite dau −. Întâi semnul, apoi calculezi fără semne: −3 · (−4) = 12.', gen: () => signItem('mul') },
+    { id: 'neg5', name: 'Semnele la împărțire', short: 'semnele la :', ex: '−12 : 4', fast: 7000, rule: 'La împărțire e la fel: semne la fel dau +, semne diferite dau −. −12 : 4 = −3.', gen: () => signItem('div') },
+    { id: 'neg6', name: 'Două semne lipite', short: '5 − (−2)', ex: '5 − (−2)', fast: 8000, rule: 'Minus lângă minus face plus: 5 − (−2) = 5 + 2 = 7. Plus lângă minus face minus: 5 + (−2) = 5 − 2 = 3.', gen: twoSignsItem },
+    { id: 'negB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul semnelor', ex: 'toate tipurile', fast: 8000, rule: 'Nivelul final: toate tipurile, amestecate.', gen: () => pick([debtItem, spendItem, doubleDebtItem, () => signItem('mul'), () => signItem('div'), twoSignsItem])() },
+  ] },
+];
+const WORLDK = {};
+WORLDS.forEach(w => { WORLDK[w.id] = w; w.levels.forEach((L, i) => {
+  L.wid = w.id; L.idx = i;
+  if (L.nf === undefined) L.nf = 7;
+  if (L.ns === undefined) L.ns = L.boss ? 20 : 8;
+  if (L.gen) { const g = L.gen; L.pool = () => new Array(60).fill(null); L.make = () => g(); }
+}); });
+// Câte corecte singur trebuie pentru 2 stele (și câte fulgere pentru 3): trei sferturi (6 din 8, 9 din 12).
+const need2 = L => (L.boss ? 16 : Math.ceil(L.ns * 0.75));
+
+/* ---- starea salvată pe acest telefon ---- */
+const KEY = 'calculFulger.v1';
+const blankFact = () => ({ l: 0, n: 0, ok: 0, fs: 0, t: 0, tn: 0, d: -1, last: -1 });
+function blankFam() { const f = {}; FAM.forEach(x => { f[x.k] = blankFact(); }); return { placed: false, f }; }
+const blankTest = () => ({ done: false, date: '', res: {}, partial: null });
+function blankState() { return { v: 1, created: Date.now(), updated: Date.now(), xp: 0, last: 'mul', name: '', modes: { mul: blankFam(), div: blankFam(), add: blankFam() }, lv: {}, test: blankTest(), days: {}, sprint: [] }; }
+function repair(s) {
+  const b = blankState();
+  if (!s || typeof s !== 'object' || s.v !== 1) return b;
+  s.modes = s.modes || {};
+  for (const m of TRAIN) {
+    if (!s.modes[m]) { s.modes[m] = b.modes[m]; continue; }
+    s.modes[m].f = s.modes[m].f || {};
+    FAM.forEach(x => { s.modes[m].f[x.k] = Object.assign(blankFact(), s.modes[m].f[x.k] || {}); });
+  }
+  delete s.modes.big; delete s.modes.neg;   // treptele din prima versiune au devenit niveluri
+  s.lv = s.lv && typeof s.lv === 'object' ? s.lv : {};
+  s.test = Object.assign(blankTest(), s.test && typeof s.test === 'object' ? s.test : {});
+  s.name = typeof s.name === 'string' ? s.name.slice(0, 30) : '';
+  s.days = s.days && typeof s.days === 'object' ? s.days : {};
+  s.sprint = Array.isArray(s.sprint) ? s.sprint : [];
+  s.xp = +s.xp || 0;
+  if (!WORLDK[s.last]) s.last = 'mul';
+  const cut = dayIdx() - 180;
+  Object.keys(s.days).forEach(k => { if (keyToIdx(k) < cut) delete s.days[k]; });
+  return s;
+}
+let storageOK = true;
+function load() { try { const raw = localStorage.getItem(KEY); return repair(raw ? JSON.parse(raw) : null); } catch (e) { storageOK = false; return blankState(); } }
+function save() { S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; } catch (e) { storageOK = false; } }
+let S = load();
+
+function today() { const k = dayKey(); if (!S.days[k]) S.days[k] = { r: 0, q: 0, ok: 0, ms: 0, sp: 0 }; return S.days[k]; }
+function streak() {
+  const set = new Set(Object.keys(S.days).filter(k => S.days[k].q > 0 || S.days[k].sp > 0).map(keyToIdx));
+  let d = dayIdx(); const playedToday = set.has(d); if (!playedToday) d--;
+  let n = 0; while (set.has(d)) { n++; d--; }
+  return { n, playedToday };
+}
+const lvlStart = L => 50 * L * (L - 1);
+function levelOf(xp) { let L = 1; while (xp >= lvlStart(L + 1)) L++; return L; }
+const RANKS = ['Începător', 'Ucenic', 'Descurcăreț', 'Iute', 'Rapid', 'Fulger', 'Maestru', 'Campion', 'Geniu', 'Legendă'];
+const rankName = L => (L <= RANKS.length ? RANKS[L - 1] : 'Legendă ' + (L - RANKS.length + 1));
+const acc = s => (s.n ? s.ok / s.n : 0);
+function famCounts(mode) { const by = [0, 0, 0, 0, 0]; let seen = 0; FAM.forEach(f => { const s = S.modes[mode].f[f.k]; by[s.l]++; if (s.n) seen++; }); return { by, known: by[3] + by[4], fast: by[4], seen }; }
+function sprintRecord() { return S.sprint.reduce((m, x) => Math.max(m, x.s), 0); }
+function sprintDays() { const m = {}; S.sprint.forEach(x => { m[x.d] = Math.max(m[x.d] || 0, x.s); }); return Object.keys(m).sort().map(d => ({ d, best: m[d] })); }
+
+/* Starea unui calcul pe hartă: 0 de învățat (gri), 1 de lucrat (portocaliu), 2 aproape (galben),
+   3 știi (verde), 4 știi rapid (verde cu fulger). De la galben în sus, un calcul crește cel mult
+   o treaptă pe zi: ce ai învățat azi devine verde doar dacă îl știi și mâine. */
+function famUpdate(mode, k, o) {
+  const s = S.modes[mode].f[k], d = dayIdx(), lim = MODES[mode].fast + (o.place ? 1500 : 0);
+  const fast = !!(o.correct && !o.hinted && o.dt <= lim);
+  s.n++; s.last = d;
+  if (o.correct) { s.ok++; if (!o.hinted) { s.t += Math.min(o.dt, 30000); s.tn++; } if (fast) s.fs++; }
+  if (o.sprint) return fast;
+  if (o.place) { s.l = o.correct ? (fast ? 3 : 2) : 0; s.d = d; return fast; }
+  if (!o.correct) { s.l = 1; return false; }
+  if (s.l <= 1) { s.l = 2; s.d = d; }
+  else if (!o.hinted && !o.rep && s.d < d) { s.l = fast ? Math.min(4, s.l + 1) : 3; s.d = d; }
+  return fast;
+}
+function famTeach(mode, k) { const s = S.modes[mode].f[k]; if (s.l === 0) s.l = 1; }
+
+/* ---- runda de antrenament: calcule grele printre calcule știute ---- */
+function introRank(mode, f) {
+  if (mode === 'add') { const s = f.a + f.b; return (s > 10 ? 100 : 0) + s; }
+  const r = INTRO.indexOf(trickOf(f.a, f.b).f) * 100 + f.a * f.b;
+  return mode === 'div' ? (S.modes.mul.f[f.k].l >= 3 ? 0 : 1000) + r : r;
+}
+function assemble(easy, hard, news) {
+  const E = easy.slice(), H = hard.slice(), N = news.slice();
+  const tail = E.length > 3 ? E.splice(E.length - 2) : [];
+  const seq = [], pend = [];
+  let lastTeach = -9, useHard = true, guard = 0;
+  const lastK = () => (seq.length ? seq[seq.length - 1].k : null);
+  const teach = k => { const t = seq.length; seq.push({ k, type: 'teach' }); pend.push({ k, at: t + 3 }, { k, at: t + 8 }); lastTeach = t; };
+  // Ultima soluție: un calcul care ar veni de două ori la rând e pus mai devreme, între două calcule
+  // diferite (după ce a fost învățat). Dacă nu încape nicăieri, e o repetare în plus și rămâne afară.
+  const tuck = x => {
+    const from = seq.findIndex(y => y.k === x.k && y.type === 'teach') + 1;
+    for (let p = seq.length - 1; p >= Math.max(1, from); p--) if (seq[p - 1].k !== x.k && seq[p].k !== x.k) { seq.splice(p, 0, x); return; }
+  };
+  const put = x => { if (x.k === lastK()) tuck(x); else seq.push(x); };
+  while ((E.length || H.length || N.length || pend.length) && guard++ < 300) {
+    const t = seq.length;
+    const pi = pend.findIndex(p => p.at <= t && p.k !== lastK());
+    if (pi >= 0) { seq.push({ k: pend[pi].k, type: 'ask' }); pend.splice(pi, 1); continue; }
+    if (N.length && (t >= 2 || !E.length) && t - lastTeach >= 3) { teach(N.shift()); continue; }
+    // ușor / greu, pe rând (primele două ușoare), fără același calcul de două ori la rând
+    const order = t < 2 ? [E, H] : (useHard ? [H, E] : [E, H]);
+    let placed = false;
+    for (const src of order) {
+      const j = src.findIndex(x => x.k !== lastK());
+      if (j >= 0) { seq.push(src.splice(j, 1)[0]); if (t >= 2) useHard = src !== H; placed = true; break; }
+    }
+    if (placed) continue;
+    if (N.length) { teach(N.shift()); continue; }
+    pend.sort((p, q) => p.at - q.at);
+    const j = pend.findIndex(p => p.k !== lastK());
+    if (j >= 0) { seq.push({ k: pend[j].k, type: 'ask' }); pend.splice(j, 1); continue; }
+    // doar repetări ale ultimului calcul: le pune mai devreme, nu lipite de el
+    const src = H.length ? H : (E.length ? E : null);
+    if (src) { put(src.shift()); continue; }
+    put({ k: pend[0].k, type: 'ask' }); pend.splice(0, 1);
+  }
+  return seq.concat(tail);
+}
+function buildFamRound(mode) {
+  const st = S.modes[mode].f, d = dayIdx();
+  const all = FAM.map(f => ({ f, s: st[f.k] }));
+  const weak = all.filter(x => x.s.l === 1).sort((x, y) => acc(x.s) - acc(y.s) || x.s.last - y.s.last).slice(0, 6);
+  const almost = all.filter(x => x.s.l === 2).sort((x, y) => x.s.last - y.s.last).slice(0, 5);
+  const load = all.filter(x => x.s.l === 1 || x.s.l === 2).length;
+  const fresh = all.filter(x => x.s.l === 0).sort((x, y) => introRank(mode, x.f) - introRank(mode, y.f));
+  const known = all.filter(x => x.s.l >= 3);
+  const hard = weak.concat(almost);
+  const news = fresh.slice(0, Math.max(0, Math.min(3, 9 - load, fresh.length)));
+  const used = new Set(hard.concat(news).map(x => x.f.k));
+  const easy = known.filter(x => !used.has(x.f.k) && d - x.s.last >= (x.s.l === 3 ? 1 : 3)).sort((x, y) => x.s.last - y.s.last).slice(0, 6);
+  easy.forEach(x => used.add(x.f.k));
+  let count = hard.length + news.length * 3 + easy.length;
+  const filler = shuffle(known.filter(x => !used.has(x.f.k)));
+  while (count < ROUND && filler.length) { easy.push(filler.pop()); count++; }
+  const more = fresh.slice(news.length);
+  while (count + 3 <= ROUND && more.length && news.length < 4 && load + news.length < 9) { news.push(more.shift()); count += 3; }
+  const second = [];
+  for (const x of shuffle(hard)) { if (count >= ROUND) break; second.push(x); count++; }
+  const A = x => ({ k: x.f.k, type: 'ask' });
+  return assemble(shuffle(easy).map(A), shuffle(hard).map(A).concat(second.map(A)), news.map(x => x.f.k));
+}
+
+/* ---- nivelurile: deblocare, plan, stele ---- */
+const lvState = id => Object.assign({ s: 0, p: 0, b: 0 }, S.lv[id] || {});
+function isUnlocked(wid, i) { const w = WORLDK[wid]; return ADMIN || i === 0 || lvState(w.levels[i].id).s > 0 || lvState(w.levels[i - 1].id).s >= 2; }
+function worldStars(wid) { const w = WORLDK[wid]; let s = 0, passed = 0; w.levels.forEach(L => { const x = lvState(L.id).s; s += x; if (x >= 2) passed++; }); return { s, max: w.levels.length * 3, passed, n: w.levels.length }; }
+function nextLevel(wid) {
+  const w = WORLDK[wid];
+  for (let i = 0; i < w.levels.length; i++) if (isUnlocked(wid, i) && lvState(w.levels[i].id).s < 2) return i;
+  for (let i = 0; i < w.levels.length; i++) if (isUnlocked(wid, i) && lvState(w.levels[i].id).s < 3) return i;
+  return -1;
+}
+// Un nivel: 2 exemple, L.nf de completat (întâi doar ultima căsuță, apoi tot mai multe), L.ns singur.
+// La a doua încercare: fără exemple, 2 de completat, L.ns singur. Nivelul final: 20 singur.
+function levelPlan(L, withDemo) {
+  // Trece prin toate calculele nivelului, amestecate; apoi încă o dată, în altă ordine.
+  // La nivelurile cu numere la întâmplare, nu repetă un calcul dintre ultimele 6.
+  let pool = [];
+  const recent = [];
+  const next = () => {
+    let it, t = 0;
+    for (;;) {
+      if (!pool.length) pool = L.pool().slice();
+      const p = pool.shift(); it = L.make(p);
+      if (recent.indexOf(it.q) < 0 || ++t >= 10) break;
+      if (pool.length) pool.push(p);   // îl păstrează pentru mai târziu
+    }
+    recent.push(it.q); if (recent.length > 6) recent.shift();
+    return it;
+  };
+  const plan = [];
+  if (L.boss) { for (let i = 0; i < L.ns; i++) plan.push({ mode: 'solo', it: next(), counted: true }); return plan; }
+  if (withDemo) plan.push({ mode: 'demo', it: next() }, { mode: 'demo', it: next() });
+  const nf = withDemo ? L.nf : 2;
+  for (let i = 0; i < nf; i++) { const it = next(); plan.push({ mode: 'fill', it, blanks: withDemo ? Math.min(it.slots.length, i + 1) : it.slots.length }); }
+  for (let i = 0; i < L.ns; i++) plan.push({ mode: 'solo', it: next(), counted: true });
+  return plan;
+}
+// Stele: 2 = trei sferturi corecte singur (6 din 8, 9 din 12; deschide nivelul următor); 3 = toate corecte și trei sferturi rapide.
+function starsFor(L, ok, fast) {
+  if (L.boss) return ok >= 19 && fast >= 15 ? 3 : (ok >= 16 ? 2 : 1);
+  const k = need2(L);
+  return ok === L.ns && fast >= k ? 3 : (ok >= k ? 2 : 1);
+}
+
+/* ---- testul de pornire: câte un calcul (sau două) din fiecare nivel ---- */
+function testList() { const out = []; WORLDS.forEach(w => w.levels.forEach((L, i) => { if (!L.boss) out.push({ wid: w.id, li: i }); })); return out; }
+// k = știe (corect și repede), s = știe, dar încet, x = de învățat, - = netestat (după două greșite în aceeași lume)
+function testVerdict(correct, fast, tries) { if (!correct) return 'x'; if (fast) return 'k'; return tries >= 2 ? 's' : null; }
+function applyTest(res) {
+  Object.keys(res).forEach(id => { if (res[id] === 'k') { const st = lvState(id); st.s = Math.max(st.s, 2); st.t = 1; S.lv[id] = st; } });
+  const first = WORLDS.find(w => w.levels.some(L => !L.boss && res[L.id] !== 'k'));
+  if (first) S.last = first.id;
+}
+
+/* ---- raportul pentru WhatsApp ---- */
+const EMO = ['⬜', '🟧', '🟨', '🟩', '🟩'];
+function hardest(mode, max) {
+  const st = S.modes[mode].f, rank = { 1: 0, 0: 1, 2: 2 };
+  return FAM.filter(f => st[f.k].l <= 2 && (st[f.k].n > 0 || S.modes[mode].placed))
+    .sort((x, y) => rank[st[x.k].l] - rank[st[y.k].l] || acc(st[x.k]) - acc(st[y.k]) || x.a * x.b - y.a * y.b).slice(0, max);
+}
+function reportText() {
+  const k = dayKey(), t = S.days[k] || { r: 0, q: 0, ok: 0, ms: 0, sp: 0 }, st = streak();
+  const keys = Object.keys(S.days), played = keys.filter(x => S.days[x].q > 0 || S.days[x].sp > 0).length;
+  const mins = Math.round(keys.reduce((a, x) => a + (S.days[x].ms || 0), 0) / 60000);
+  const rec = sprintRecord(), m = famCounts('mul'), out = [];
+  out.push('⚡ Calcul Fulger · raport ' + niceDate(k) + (S.name ? ' · ' + S.name : ''));
+  out.push('🔥 ' + nr(st.n, 'zi', 'zile') + ' la rând · ' + nr(played, 'zi jucată', 'zile jucate') + ' · ' + nr(mins, 'minut', 'minute') + ' în total');
+  out.push('Azi: ' + nr(t.r, 'rundă', 'runde') + ', ' + t.ok + ' corecte din ' + t.q + (t.sp ? ' · sprint ' + t.sp : ' · fără sprint') + (rec ? ' (record ' + rec + ', ținta ' + SPRINT_TARGET + ')' : ''));
+  if (S.test.done) {
+    const res = S.test.res;
+    out.push('');
+    out.push('Testul de pornire (' + niceDate(S.test.date) + '):');
+    WORLDS.forEach(w => {
+      const ls = w.levels.filter(L => !L.boss), g = v => ls.filter(L => (res[L.id] || '-') === v).map(L => L.short), parts = [];
+      if (g('k').length) parts.push('știe ' + g('k').join(', '));
+      if (g('s').length) parts.push('încet ' + g('s').join(', '));
+      const x = g('x').concat(g('-')); if (x.length) parts.push('de învățat ' + x.join(', '));
+      out.push('· ' + w.name + ': ' + parts.join('; '));
+    });
+  }
+  out.push('');
+  out.push('Niveluri trecute (cu cel puțin 2 stele):');
+  WORLDS.forEach(w => { const ws = worldStars(w.id); out.push('· ' + w.name + ': ' + ws.passed + ' din ' + ws.n + ', ' + nr(ws.s, 'stea', 'stele') + ' din ' + ws.max); });
+  out.push('');
+  out.push('Harta tablei: ' + m.known + ' din 36 știute, ' + m.fast + ' rapid');
+  if (S.modes.mul.placed || m.seen) {
+    for (let a = 2; a <= 9; a++) { let row = a + '  '; for (let b = a; b <= 9; b++) row += EMO[S.modes.mul.f[a + 'x' + b].l]; out.push(row); }
+    out.push(EMO[3] + ' știe · ' + EMO[2] + ' aproape · ' + EMO[1] + ' de lucrat · ' + EMO[0] + ' încă nu');
+    const h = hardest('mul', 10); if (h.length) out.push('De lucrat: ' + h.map(f => f.a + DOT + f.b).join(', '));
+  }
+  const sd = sprintDays().slice(-7); if (sd.length) out.push('Sprint, pe zile: ' + sd.map(x => x.best).join(', '));
+  return out.join('\n');
+}
+
+if (!HAS_DOM) {
+  // Doar pentru verificarea automată (fără browser).
+  globalThis.CF = { FAM, FAMK, trickOf, mulHelp, divHelp, addHelp, subHelp, famQuestion, buildFamRound, assemble, famUpdate, famTeach, mulXY, nbCands, nbFirst, nbBridge, nbSteps,
+    WORLDS, WORLDK, levelPlan, starsFor, isUnlocked, nextLevel, worldStars, testList, testVerdict, applyTest, reportText,
+    blankState, levelOf, rankName, nr, SPRINT, dayIdx, getS: () => S, setS: v => { S = v; }, setAdmin: v => { ADMIN = v; } };
+  return;
+}
+
+/* =====================================================================
+   ECRANUL
+   ===================================================================== */
+const $ = (sel, root) => (root || document).querySelector(sel);
+const el = { home: $('#home'), world: $('#world'), done: $('#done'), progress: $('#progress'), report: $('#report'), play: $('#play'), stage: $('#stage'),
+  keys: $('#keys'), choices: $('#choices'), actions: $('#actions'), prog: $('#prog'), progfill: $('#progfill'), pts: $('#pts'), combo: $('#combo'), toast: $('#toast'), fx: $('#fx') };
+const svg = (cls, vb, body) => '<svg class="ic ' + cls + '" viewBox="' + vb + '" aria-hidden="true">' + body + '</svg>';
+const STAR_D = 'M12 2.6l2.85 5.95 6.45.85-4.72 4.48 1.18 6.42L12 17.2l-5.76 3.1 1.18-6.42L2.7 9.4l6.45-.85z';
+const ICON = {
+  bolt: svg('bolt', '0 0 24 28', '<path d="M13.4 1.5 3.4 15h6.9L8.2 26.5 20.6 11.8h-7.1L13.4 1.5Z"/>'),
+  flame: svg('flame', '0 0 24 24', '<path d="M12.3 2c.9 3.3-1.5 5.1-3.1 7.3C7.6 11.4 6.3 13.3 6.3 15.8c0 4 2.9 6.2 5.9 6.2 3.1 0 6-2.2 6-6.2 0-2.3-1.1-4.2-2.4-5.6.1 1.6-.5 2.9-1.6 3.4.4-3.9-.5-8.4-1.9-11.6Z"/>'),
+  sndOn: svg('', '0 0 24 24', '<path d="M4 9h4l5-4v14l-5-4H4z" stroke="none"/><path d="M16 8.5a5 5 0 0 1 0 7M18.6 6a8.5 8.5 0 0 1 0 12" fill="none" stroke-width="2" stroke-linecap="round"/>'),
+  sndOff: svg('', '0 0 24 24', '<path d="M4 9h4l5-4v14l-5-4H4z" stroke="none"/><path d="m16.5 9.5 5 5m0-5-5 5" fill="none" stroke-width="2" stroke-linecap="round"/>'),
+  chev: svg('', '0 0 24 24', '<path d="m9 6 6 6-6 6" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'),
+  back: svg('', '0 0 24 24', '<path d="m15 6-6 6 6 6" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'),
+  check: svg('', '0 0 24 24', '<path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'),
+  bulb: svg('', '0 0 24 24', '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3Z" fill="none" stroke-width="2" stroke-linejoin="round"/>'),
+  lock: svg('', '0 0 24 24', '<rect x="5" y="10.5" width="14" height="10" rx="2.2" stroke="none"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke-width="2.2"/>'),
+  unlock: svg('', '0 0 24 24', '<rect x="5" y="10.5" width="14" height="10" rx="2.2" stroke="none"/><path d="M8 10.5V8a4 4 0 0 1 7.6-1.7" fill="none" stroke-width="2.2" stroke-linecap="round"/>'),
+  trophy: svg('', '0 0 24 24', '<path d="M7 3.5h10V8a5 5 0 0 1-10 0z" stroke="none"/><path d="M7 5.5H4.2v1.2A3.8 3.8 0 0 0 7.6 10.5M17 5.5h2.8v1.2a3.8 3.8 0 0 1-3.4 3.8" fill="none" stroke-width="1.8"/><path d="M10.5 13h3v3.5h-3zM8 18h8v2.5H8z" stroke="none"/>'),
+  grid: svg('', '0 0 24 24', '<path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" fill="none" stroke-width="1.8" stroke-linejoin="round"/>'),
+};
+const starIc = on => '<svg class="ic ' + (on ? 'st-on' : 'st-off') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + STAR_D + '"/></svg>';
+const starsHTML = n => '<span class="stars" role="img" aria-label="' + nr(n, 'stea', 'stele') + ' din 3">' + [0, 1, 2].map(i => starIc(i < n)).join('') + '</span>';
+const btn = (act, label, primary, extra) => '<button class="btn' + (primary ? ' primary' : '') + '" type="button" data-act="' + act + '" ' + (extra || '') + '>' + label + '</button>';
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+let RUN = null;
+let soundOn = getPref('sound', '1') === '1';
+let AC = null;
+let curWorld = 'mul';
+
+function getPref(k, d) { try { const v = localStorage.getItem('calculFulger.' + k); return v === null ? d : v; } catch (e) { return d; } }
+function setPref(k, v) { try { localStorage.setItem('calculFulger.' + k, v); } catch (e) { /* nu contează */ } }
+function checkAdmin() { if (location.hash === '#profesor') setPref('admin', '1'); ADMIN = getPref('admin', '0') === '1'; }
+function adminBar() { return ADMIN ? '<div class="admin"><span><b>Mod profesor:</b> toate nivelurile sunt deschise, doar pe acest telefon.</span>' + btn('admin-off', 'Ieși', false) + '</div>' : ''; }
+function show(name) { ['home', 'world', 'done', 'progress', 'report'].forEach(n => { el[n].hidden = n !== name; }); window.scrollTo(0, 0); }
+function later(fn, ms) { const r = RUN; setTimeout(() => { if (RUN === r) fn(); }, ms); }
+let toastT = 0;
+function toast(msg) { el.toast.textContent = msg; el.toast.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.toast.hidden = true; }, 2600); }
+function setDock(kind, html) {
+  el.keys.hidden = kind !== 'keys'; el.choices.hidden = kind !== 'choices'; el.actions.hidden = kind !== 'actions';
+  if (kind === 'keys') okReady();
+  if (kind === 'choices') el.choices.innerHTML = html;
+  if (kind === 'actions') el.actions.innerHTML = html;
+}
+
+/* ---- sunete scurte (pornesc doar după prima atingere) ---- */
+function audioUnlock() {
+  if (!soundOn) return;
+  try { if (!AC) { const C = window.AudioContext || window.webkitAudioContext; if (C) AC = new C(); } if (AC && AC.state === 'suspended') AC.resume(); } catch (e) { AC = null; }
+}
+function tone(f, dur, type, vol, when) {
+  if (!soundOn || !AC) return;
+  try {
+    const t = AC.currentTime + (when || 0), o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.08, t + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + dur + 0.03);
+  } catch (e) { /* fără sunet */ }
+}
+const SCALE = [523, 587, 659, 698, 784, 880, 988, 1047, 1175, 1319];
+const SFX = {
+  ok() { tone(660, 0.09); tone(990, 0.13, 'sine', 0.07, 0.07); },
+  fast() { tone(880, 0.07); tone(1320, 0.09, 'sine', 0.07, 0.05); tone(1760, 0.14, 'sine', 0.05, 0.1); },
+  bad() { tone(196, 0.18, 'triangle', 0.07); },
+  soft() { tone(330, 0.12, 'triangle', 0.05); },
+  tick() { tone(520, 0.06, 'square', 0.03); },
+  slot(i) { tone(SCALE[Math.max(0, Math.min(i, SCALE.length - 1))], 0.12, 'sine', 0.07); },
+  item(c) { const b = 523 * Math.pow(2, Math.min(c, 12) / 24); [0, 4, 7].forEach((s, i) => tone(b * Math.pow(2, s / 12), 0.15, 'sine', 0.06, i * 0.06)); },
+  star(i) { tone(880 * Math.pow(1.26, i), 0.4, 'triangle', 0.08); tone(1760 * Math.pow(1.26, i), 0.3, 'sine', 0.03); },
+  unlock() { [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.12, 'square', 0.03, i * 0.06)); },
+  win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.16, 'sine', 0.07, i * 0.09)); },
+};
+
+/* ---- particule: la fiecare reușită, și confetti la final ---- */
+const FX = { parts: [], on: false, ctx: null, W: 0, H: 0 };
+const reduced = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+function fxSize() { const c = el.fx, dpr = Math.min(2, window.devicePixelRatio || 1); FX.W = innerWidth; FX.H = innerHeight; c.width = FX.W * dpr; c.height = FX.H * dpr; FX.ctx = c.getContext('2d'); if (FX.ctx) FX.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+function spawn(x, y, n, power, dur) {
+  if (reduced()) return;
+  if (!FX.ctx || FX.W !== innerWidth || FX.H !== innerHeight) fxSize();
+  if (!FX.ctx) return;
+  const cs = getComputedStyle(document.documentElement), cols = ['--pen', '--bolt', '--s4', '--s1', '--s2'].map(v => cs.getPropertyValue(v).trim() || '#2851D8'), t0 = now();
+  for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = power * (0.35 + Math.random() * 0.85); FX.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - power * 0.45, s: 4 + Math.random() * 5, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3, c: pick(cols), t0, dur: dur * (0.7 + Math.random() * 0.5) }); }
+  if (!FX.on) { FX.on = true; requestAnimationFrame(fxLoop); }
+}
+function fxLoop() {
+  const ctx = FX.ctx, t = now(); ctx.clearRect(0, 0, FX.W, FX.H);
+  FX.parts = FX.parts.filter(p => t - p.t0 < p.dur);
+  FX.parts.forEach(p => { p.vy += 0.26; p.x += p.vx; p.y += p.vy; p.r += p.vr; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.globalAlpha = Math.max(0, 1 - (t - p.t0) / p.dur); ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore(); });
+  if (FX.parts.length) requestAnimationFrame(fxLoop); else { ctx.clearRect(0, 0, FX.W, FX.H); FX.on = false; }
+}
+function burstAt(elm, n, power) { if (!elm) return; const b = elm.getBoundingClientRect(); spawn(b.left + b.width / 2, b.top + b.height / 2, n || 18, power || 6, 850); }
+function confetti() { SFX.win(); spawn(innerWidth / 2, innerHeight * 0.32, 120, 11, 1900); }
+
+/* ---- desenele (SVG) ---- */
+function visSVG(v, reveal) {
+  if (!v) return '';
+  if (v.t === 'dots') return svgDots(v);
+  if (v.t === 'frames') return svgFrames(v);
+  if (v.t === 'line') return svgLine(v, reveal);
+  if (v.t === 'jumps') return svgJumps(v, reveal);
+  return '';
+}
+function svgDots(v) {
+  const P = 13, R = 4.6, G = 7, M = 3;
+  const cols = []; let x = 0;
+  v.g.forEach((n, gi) => { if (gi) x += G; for (let i = 0; i < n; i++) { cols.push({ x, c: gi % 2 ? 'db' : 'da' }); x += P; } });
+  if (v.ghost) { x += G; for (let i = 0; i < v.ghost; i++) { cols.push({ x, c: 'dg' }); x += P; } }
+  const W = x - P + 2 * (M + R), H = (v.r - 1) * P + 2 * (M + R);
+  let s = '<svg class="vis" viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" aria-hidden="true">';
+  for (let r = 0; r < v.r; r++) for (const c of cols) s += '<circle class="' + (v.hl === r && c.c !== 'dg' ? 'db' : c.c) + '" cx="' + (M + R + c.x) + '" cy="' + (M + R + r * P) + '" r="' + R + '"/>';
+  if (v.cross) cols.filter(c => c.c === 'dg').forEach(c => { const cx = M + R + c.x; s += '<line class="xl" x1="' + (cx - R - 2) + '" y1="' + M + '" x2="' + (cx + R + 2) + '" y2="' + (H - M) + '"/>'; });
+  return s + '</svg>';
+}
+function svgFrames(v) {
+  const n = v.c.length > 10 ? 2 : 1, C = 17, R = 5.6, GAP = 12, M = 2, FW = 5 * C, FH = 2 * C;
+  const W = n * FW + (n - 1) * GAP + 2 * M, H = FH + 2 * M;
+  let s = '<svg class="vis" viewBox="0 0 ' + W + ' ' + H + '" width="' + Math.round(W * 1.25) + '" height="' + Math.round(H * 1.25) + '" aria-hidden="true">';
+  for (let f = 0; f < n; f++) {
+    const ox = M + f * (FW + GAP), oy = M;
+    s += '<rect class="fr" x="' + ox + '" y="' + oy + '" width="' + FW + '" height="' + FH + '" rx="3"/>';
+    for (let i = 1; i < 5; i++) s += '<line class="frl" x1="' + (ox + i * C) + '" y1="' + oy + '" x2="' + (ox + i * C) + '" y2="' + (oy + FH) + '"/>';
+    s += '<line class="frl" x1="' + ox + '" y1="' + (oy + C) + '" x2="' + (ox + FW) + '" y2="' + (oy + C) + '"/>';
+    for (let i = 0; i < 10; i++) {
+      const code = v.c[f * 10 + i]; if (!code) continue;
+      const cx = ox + (i % 5) * C + C / 2, cy = oy + Math.floor(i / 5) * C + C / 2;
+      if (code === 3) s += '<circle class="dx" cx="' + cx + '" cy="' + cy + '" r="' + R + '"/><line class="xl" x1="' + (cx - R) + '" y1="' + (cy - R) + '" x2="' + (cx + R) + '" y2="' + (cy + R) + '"/>';
+      else s += '<circle class="' + (code === 1 ? 'da' : 'db') + '" cx="' + cx + '" cy="' + cy + '" r="' + R + '"/>';
+    }
+  }
+  return s + '</svg>';
+}
+function svgLine(v, reveal) {
+  const lo = Math.min(v.from, v.to, 0) - 1, hi = Math.max(v.from, v.to, 0) + 1, n = hi - lo;
+  const W = 320, M = 14, st = (W - 2 * M) / n, X = t => M + (t - lo) * st, Y = 64, H = 88;
+  const every = st >= 16 ? 1 : (st >= 9 ? 2 : 5);
+  let s = '<svg class="vis wide" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true"><line class="nl" x1="' + (M - 6) + '" y1="' + Y + '" x2="' + (W - M + 6) + '" y2="' + Y + '"/>';
+  for (let t = lo; t <= hi; t++) {
+    const x = X(t), z = t === 0;
+    s += '<line class="' + (z ? 'nl0' : 'ntk') + '" x1="' + x + '" y1="' + (Y - (z ? 7 : 4)) + '" x2="' + x + '" y2="' + (Y + (z ? 7 : 4)) + '"/>';
+    const hideAns = !reveal && t === v.to;
+    if (!hideAns && (z || t === v.from || (reveal && t === v.to) || t % every === 0)) s += '<text class="' + (z ? 'nt0' : 'nt') + '" x="' + x + '" y="' + (Y + 19) + '" text-anchor="middle">' + fmt(t) + '</text>';
+  }
+  const x1 = X(v.from), x2 = X(v.to), mid = (x1 + x2) / 2, top = Y - 44, d = v.to - v.from;
+  s += '<path class="arc" d="M' + x1 + ' ' + (Y - 7) + ' Q' + mid + ' ' + top + ' ' + x2 + ' ' + (Y - 9) + '"/>';
+  s += '<path class="arh" d="M' + (x2 - 5) + ' ' + (Y - 16) + ' L' + x2 + ' ' + (Y - 7) + ' L' + (x2 + 5) + ' ' + (Y - 16) + ' Z"/>';
+  s += '<circle class="da" cx="' + x1 + '" cy="' + Y + '" r="5"/><circle class="db" cx="' + x2 + '" cy="' + Y + '" r="5"/>';
+  s += '<text class="arcl" x="' + mid + '" y="' + (top + 12) + '" text-anchor="middle">' + (d > 0 ? '+' + d : fmt(d)) + '</text>';
+  if (!reveal) s += '<text class="nq" x="' + x2 + '" y="' + (Y + 20) + '" text-anchor="middle">?</text>';
+  return s + '</svg>';
+}
+function svgJumps(v, reveal) {
+  const pts = [v.start]; v.steps.forEach(d => { if (d) pts.push(pts[pts.length - 1] + d); });
+  const n = pts.length, W = 320, M = 34, H = 86, Y = 62, gap = (W - 2 * M) / (n - 1);
+  let s = '<svg class="vis wide" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">';
+  for (let i = 0; i < n - 1; i++) {
+    const x1 = M + i * gap, x2 = x1 + gap, mid = (x1 + x2) / 2, d = pts[i + 1] - pts[i];
+    s += '<path class="arc" d="M' + (x1 + 8) + ' ' + (Y - 13) + ' Q' + mid + ' ' + (Y - 52) + ' ' + (x2 - 8) + ' ' + (Y - 14) + '"/>';
+    s += '<path class="arh" d="M' + (x2 - 13) + ' ' + (Y - 20) + ' L' + (x2 - 7) + ' ' + (Y - 12) + ' L' + (x2 - 2) + ' ' + (Y - 21) + ' Z"/>';
+    s += '<text class="arcl" x="' + mid + '" y="' + (Y - 37) + '" text-anchor="middle">' + (d > 0 ? '+' + d : fmt(d)) + '</text>';
+  }
+  pts.forEach((p, i) => {
+    const x = M + i * gap, last = i === n - 1;
+    s += '<rect class="' + (last ? 'jb2' : 'jb') + '" x="' + (x - 23) + '" y="' + (Y - 12) + '" width="46" height="24" rx="12"/><text class="jt" x="' + x + '" y="' + (Y + 5) + '" text-anchor="middle">' + (last && !reveal ? '?' : p) + '</text>';
+  });
+  return s + '</svg>';
+}
+
+/* ---- harta ---- */
+function famLabel(mode, f) { return mode === 'mul' ? f.a + DOT + f.b : mode === 'div' ? (f.a * f.b) + ' : ' + f.a : f.a + ' + ' + f.b; }
+function famFull(mode, f) {
+  const p = f.a * f.b;
+  if (mode === 'mul') return f.a + ' ' + DOT + ' ' + f.b + ' = ' + p;
+  if (mode === 'div') return p + ' : ' + f.a + ' = ' + f.b + (f.a !== f.b ? ' și ' + p + ' : ' + f.b + ' = ' + f.a : '');
+  return f.a + ' + ' + f.b + ' = ' + (f.a + f.b);
+}
+function mapHTML(mode, o) {
+  o = o || {};
+  let h = '<div class="map">';
+  for (let a = 2; a <= 9; a++) for (let b = 2; b <= 9; b++) {
+    if (b < a) { h += '<span class="cell empty" aria-hidden="true"></span>'; continue; }
+    const k = a + 'x' + b, s = S.modes[mode].f[k], hl = o.hl && o.hl.has(k) ? ' hl' : '';
+    const lbl = mode === 'add' ? a + '+' + b : mode === 'div' ? String(a * b) : a + DOT + b;
+    const val = s.l >= 3 ? (mode === 'mul' ? a * b : mode === 'add' ? a + b : '') : '';
+    const inner = '<span class="lb">' + lbl + '</span>' + (val !== '' ? '<span class="v">' + val + '</span>' : '') + (s.l === 4 ? ICON.bolt : '');
+    h += o.tap
+      ? '<button class="cell s' + s.l + hl + '" type="button" data-act="cell" data-mode="' + mode + '" data-k="' + k + '" aria-label="' + esc(famFull(mode, FAMK[k]) + ', ' + STATUS[s.l]) + '">' + inner + '</button>'
+      : '<span class="cell s' + s.l + hl + '">' + inner + '</span>';
+  }
+  return h + '</div>';
+}
+function legendHTML() { return '<div class="legend">' + [0, 1, 2, 3, 4].map(l => '<span><i class="sw s' + l + '"></i>' + STATUS[l] + '</span>').join('') + '</div>'; }
+function stackBar(c) { return '<span class="stack">' + [4, 3, 2, 1].map(l => (c.by[l] ? '<i class="bg' + l + '" style="width:' + (c.by[l] / 36 * 100) + '%"></i>' : '')).join('') + '</span>'; }
+
+/* ---- acasă ---- */
+function ctaHTML() {
+  let wid = S.last, li = nextLevel(wid);
+  if (li < 0) { const w2 = WORLDS.find(w => nextLevel(w.id) >= 0); if (w2) { wid = w2.id; li = nextLevel(wid); } }
+  if (li < 0) return '<button class="cta" type="button" data-act="train" data-mode="mul"><span class="t">Antrenament: tabla</span><span class="s">Toate nivelurile au 3 stele. Ține-le proaspete!</span></button>';
+  const w = WORLDK[wid], L = w.levels[li], st = lvState(L.id);
+  const t = (S.xp === 0 ? 'Începe: ' : (st.p ? 'Continuă: ' : 'Următorul: ')) + L.name;
+  const s = w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (li + 1) + ' din ' + w.levels.length) + (st.s ? ' · ' + nr(st.s, 'stea', 'stele') : '');
+  return '<button class="cta" type="button" data-act="level" data-w="' + wid + '" data-l="' + li + '"><span class="t">' + t + '</span><span class="s">' + s + '</span></button>';
+}
+function renderHome() {
+  const st = streak(), t = S.days[dayKey()] || { r: 0, sp: 0 }, L = levelOf(S.xp);
+  const a = lvlStart(L), b = lvlStart(L + 1), pct = Math.max(3, Math.round((S.xp - a) / (b - a) * 100));
+  const rounds = Math.min(t.r, 3), goalDone = t.r >= 3 && t.sp > 0;
+  const pips = [0, 1, 2].map(i => '<span class="pip' + (i < rounds ? ' on' : '') + '">' + (i < rounds ? ICON.check : '') + '</span>').join('') + '<span class="pip sp' + (t.sp ? ' on' : '') + '">' + ICON.bolt + '</span>';
+  const zileLab = st.n === 1 ? 'zi la rând' : (de(st.n) === ' de ' ? 'de zile la rând' : 'zile la rând');
+  const trophies = WORLDS.filter(w => lvState(w.levels[w.levels.length - 1].id).s >= 2).map(w => '<span class="trophy">' + ICON.trophy + w.levels[w.levels.length - 1].trophy + '</span>').join('');
+  const test = !S.test.done
+    ? '<button class="cta test" type="button" data-act="test"><span class="t">' + (S.test.partial ? 'Continuă testul de pornire' : 'Începe cu testul de pornire') + '</span><span class="s">Cam 10 minute. Afli ce știi deja și de unde începi.</span></button>'
+    : '';
+  el.home.innerHTML =
+    '<header class="top"><div class="brand">' + ICON.bolt + '<span>Calcul</span><span class="w2">Fulger</span></div>' +
+    '<button class="icon-btn" type="button" data-act="sound" aria-label="' + (soundOn ? 'Oprește sunetul' : 'Pornește sunetul') + '">' + (soundOn ? ICON.sndOn : ICON.sndOff) + '</button></header>' +
+    adminBar() +
+    (S.name ? '<p class="hello">Salut, ' + esc(S.name) + '!</p>' : '') +
+    (storageOK ? '' : '<div class="card warnbox"><b>Atenție:</b> browserul ăsta nu păstrează progresul. Deschide linkul în Chrome sau Safari, nu într-o fereastră privată.</div>') +
+    '<div class="stats">' +
+      '<div class="stat">' + ICON.flame + '<div><b>' + st.n + '</b><div class="lab">' + zileLab + (!st.playedToday && st.n ? '<br>joacă azi ca s-o păstrezi' : '') + '</div></div></div>' +
+      '<div class="stat"><span class="lvlbadge">' + L + '</span><div style="flex:1;min-width:0"><div class="lab">Rangul ' + L + ': ' + rankName(L) + ' · ' + S.xp + ' puncte</div><div class="xpbar"><i style="width:' + pct + '%"></i></div></div></div>' +
+    '</div>' +
+    '<section class="card goal"><div class="pips">' + pips + '</div><div><h2>' + (goalDone ? 'Ținta de azi e gata!' : 'Ținta de azi') + '</h2><p class="small muted">3 runde și un sprint · ' + nr(t.r, 'rundă', 'runde') + ' azi' + (t.sp ? ', sprint: ' + t.sp : '') + '</p></div></section>' +
+    (test ? test + '<button class="linkbtn" type="button" data-act="level" data-w="mul" data-l="0">Sari peste test</button>' : ctaHTML()) +
+    (trophies ? '<div class="trophies">' + trophies + '</div>' : '') +
+    (S.xp === 0 ? '<section class="card how"><h3>Cum merge</h3><ol>' +
+      '<li>Alegi o lume și treci prin <b>niveluri</b>. Fiecare nivel are un truc.</li>' +
+      '<li>La fiecare nivel: <b>2 exemple</b>, apoi <b>completezi căsuțe</b>, apoi lucrezi <b>singur</b>.</li>' +
+      '<li>Scrii rezultatul și apeși <b>OK</b>. Contează <b>primul răspuns</b>. Dacă nu știi, apasă „Nu știu” și primești ajutor.</li>' +
+      '<li><b>2 stele</b> deschid nivelul următor. <b>3 stele</b> = toate corecte și rapide.</li>' +
+      '<li><b>Antrenamentul cu harta</b> te ajută să nu uiți ce ai învățat.</li></ol></section>' : '') +
+    '<section class="list"><h3 class="eyebrow">Lumile</h3>' + WORLDS.map(worldRow).join('') + '</section>' +
+    '<section class="list"><h3 class="eyebrow">Antrenament</h3>' + trainRow('mul') + sprintRow() + '</section>' +
+    '<div class="btnrow"><button class="btn" type="button" data-act="progress">Progresul meu</button><button class="btn" type="button" data-act="report">Trimite raportul</button></div>';
+}
+function worldRow(w) {
+  const ws = worldStars(w.id);
+  return '<button class="mode" type="button" data-act="world" data-w="' + w.id + '"><span class="tile">' + w.tile + '</span><span class="mb"><span class="n">' + w.name + '</span><span class="p">' + ws.passed + ' din ' + ws.n + ' niveluri · ' + nr(ws.s, 'stea', 'stele') + ' din ' + ws.max + '</span><span class="stack"><i class="bg4" style="width:' + (ws.passed / ws.n * 100) + '%"></i></span></span>' + ICON.chev + '</button>';
+}
+function trainRow(m) {
+  const c = famCounts(m);
+  return '<button class="mode" type="button" data-act="train" data-mode="' + m + '"><span class="tile">' + ICON.grid + '</span><span class="mb"><span class="n">Cu harta: ' + MODES[m].name.toLowerCase() + '</span><span class="p">' + (S.modes[m].placed ? c.known + ' din 36 pe hartă · 20 de calcule' : 'Întâi harta ta: 36 de calcule') + '</span>' + stackBar(c) + '</span>' + ICON.chev + '</button>';
+}
+function sprintRow() {
+  const rec = sprintRecord();
+  return '<button class="mode" type="button" data-act="sprint"><span class="tile">' + ICON.bolt + '</span><span class="mb"><span class="n">Sprint de un minut</span><span class="p">' + (rec ? 'Record: ' + rec + ' · ținta: ' + SPRINT_TARGET : 'Aceleași 30 de calcule ca pe foaie') + '</span></span>' + ICON.chev + '</button>';
+}
+
+/* ---- drumul nivelurilor dintr-o lume ---- */
+function renderWorld(wid) {
+  curWorld = wid;
+  const w = WORLDK[wid], ws = worldStars(wid), nx = nextLevel(wid);
+  let h = '<header class="top"><button class="icon-btn" type="button" data-act="home" aria-label="Înapoi">' + ICON.back + '</button><h1 class="h-page">' + w.name + '</h1><span class="wstars">' + starIc(true) + ws.s + '/' + ws.max + '</span></header>';
+  h += adminBar();
+  h += '<p class="small muted">Fiecare nivel: 2 exemple, completezi căsuțe, apoi lucrezi singur. Cu 2 stele se deschide nivelul următor.</p>';
+  h += '<div class="path">' + w.levels.map((L, i) => nodeHTML(w, L, i, nx)).join('') + '</div>';
+  if (MODES[wid]) h += '<section class="list"><h3 class="eyebrow">Ca să nu uiți</h3>' + trainRow(wid) + '</section>';
+  el.world.innerHTML = h;
+}
+function nodeHTML(w, L, i, nx) {
+  const st = lvState(L.id), open = isUnlocked(w.id, i), cur = open && i === nx, done = st.s >= 2;
+  const cls = 'node' + (done ? ' done' : '') + (cur ? ' cur' : '') + (open ? '' : ' locked') + (L.boss ? ' boss' : '');
+  const num = !open ? ICON.lock : (L.boss ? ICON.trophy : (done ? ICON.check : String(i + 1)));
+  const sub = esc(L.ex) + (st.t && st.p === 0 ? ' · știut la test' : '');
+  return '<button class="' + cls + '" type="button" data-act="' + (open ? 'level' : 'locked') + '" data-w="' + w.id + '" data-l="' + i + '"><span class="num">' + num + '</span><span class="nb"><span class="n">' + (L.boss ? 'Nivelul final: ' : 'Nivelul ' + (i + 1) + ': ') + L.name + '</span><span class="p">' + sub + '</span>' +
+    (open ? starsHTML(st.s) : '<span class="p">Se deschide cu 2 stele la nivelul ' + i + '</span>') + '</span>' + (cur ? '<span class="go">Joacă</span>' : '') + '</button>';
+}
+
+/* ---- jocul: comun ---- */
+function openPlay() {
+  el.play.hidden = false; document.body.classList.add('playing');
+  if (RUN.kind === 'level') renderLevel(); else if (RUN.kind === 'test') renderTest(); else renderStage();
+  updateBar(); updatePts(); updateCombo();
+}
+function closePlay() { el.play.hidden = true; document.body.classList.remove('playing'); el.prog.classList.remove('timer'); el.combo.hidden = true; }
+function quit() {
+  if (!RUN) return;
+  const r = RUN; r.phase = 'gone'; RUN = null; closePlay();
+  if (r.kind === 'level') { renderWorld(r.wid); show('world'); } else { renderHome(); show('home'); }
+}
+function updateBar() {
+  const r = RUN; if (!r) return;
+  if (r.kind === 'sprint') { el.prog.classList.add('timer'); if (r.phase !== 'sprint') el.progfill.style.width = '100%'; return; }
+  el.prog.classList.remove('timer');
+  let f = 0;
+  if (r.kind === 'level') f = r.plan ? Math.max(0, r.i) / r.plan.length : 0;
+  else if (r.kind === 'test') f = r.at / r.list.length;
+  else f = Math.max(0, r.i) / r.items.length;
+  el.progfill.style.width = (f * 100) + '%';
+}
+function updatePts() {
+  const r = RUN; if (!r) return;
+  if (r.kind === 'sprint') { el.pts.textContent = r.phase === 'sprint' ? '' : '60 s'; return; }
+  el.pts.textContent = '+' + r.stats.xp;
+}
+function updateCombo() {
+  const c = RUN && RUN.combo ? RUN.combo : 0;
+  if (c < 2) { el.combo.hidden = true; return; }
+  el.combo.hidden = false; el.combo.innerHTML = ICON.flame + '×' + c;
+  el.combo.classList.remove('bump'); void el.combo.offsetWidth; el.combo.classList.add('bump');
+}
+function updateBox() { const bx = $('#box'); if (!bx || !RUN) return; bx.textContent = RUN.input; bx.classList.toggle('empty', !RUN.input); }
+function setFb(html, cls) { const fb = $('#fb'); if (fb) { fb.className = 'fb ' + (cls || ''); fb.innerHTML = html; } }
+function shakeBox(cls) { const bx = $('#box'); if (!bx) return; bx.classList.remove('shake'); void bx.offsetWidth; bx.classList.add('shake'); if (cls) bx.classList.add(cls); }
+// Un minus singur conteaza ca nimic scris (testul cu agenti, 2026-10-07).
+const blank = s => !s || s === MINUS;
+function parseInput(s) { if (!s || s === MINUS) return NaN; return Number(s.replace(MINUS, '-')); }
+// Răspunsul se verifică doar la OK: altfel un copil ar încerca numere până când unul e primit.
+function typeInto(k, allowMinus) {
+  const r = RUN;
+  if (k === 'back') { r.input = r.input.slice(0, -1); r.tk = now(); return true; }
+  if (k === 'minus') { if (!allowMinus) return false; r.input = r.input.charAt(0) === MINUS ? r.input.slice(1) : MINUS + r.input; r.tk = now(); return true; }
+  if (/^\d$/.test(k)) { if (r.input.replace(MINUS, '').length >= 3) return false; r.input += k; r.tk = now(); return true; }
+  return false;
+}
+// Timpul unui răspuns se oprește la ultima cifră scrisă, nu la apăsarea pe OK.
+const typedAt = r => (r.tk && r.tk >= r.t0 ? r.tk : now());
+function okReady() { el.keys.classList.toggle('ready', !!(RUN && RUN.input)); }
+const PRAISE = ['Corect!', 'Bravo!', 'Exact!', 'Perfect!', 'Super!', 'Așa da!', 'Foarte bine!', 'Excelent!'];
+const COMBO_MSG = { 3: 'Trei la rând!', 5: 'Cinci la rând! Ești în formă!', 10: 'Zece la rând! Incredibil!', 15: 'Cincisprezece la rând!', 20: 'Douăzeci la rând! Legendar!' };
+function reward(perfect, fast, pts, anchor, praise) {
+  const c = RUN.combo || 0, special = perfect && COMBO_MSG[c];
+  const msg = special || (perfect ? (praise && Math.random() < 0.35 ? pick(praise) : pick(PRAISE)) : 'Corect! Data viitoare iese din prima.');
+  setFb((fast ? ICON.bolt + ' Fulger! ' : '') + msg + ' +' + pts, fast ? 'fast' : (perfect ? 'ok' : 'info'));
+  if (special) { SFX.win(); burstAt(anchor, 46, 9); }
+  else if (perfect) { if (fast) SFX.fast(); else SFX.item(c); burstAt(anchor, 18, 6); }
+  else SFX.ok();
+  updateCombo(); updatePts();
+}
+
+/* =====================================================================
+   NIVELUL: intro, exemple, completare, singur
+   ===================================================================== */
+const lvOf = r => WORLDK[r.wid].levels[r.li];
+function startLevel(wid, li) {
+  const w = WORLDK[wid]; if (!w || !w.levels[li]) return;
+  if (!isUnlocked(wid, li)) { toast('Se deschide cu 2 stele la nivelul ' + li + '.'); return; }
+  S.last = wid; save();
+  RUN = { kind: 'level', wid, li, plan: null, i: -1, phase: 'intro', entry: null, fill: null, demo: 0, input: '', t0: 0, covered: false, locked: false, lastWrong: '', fixMsg: '',
+    combo: 0, stats: { n: 0, ok: 0, fast: 0, xp: 0, best: 0, perfect: 0 }, extra: 0, xp0: S.xp };
+  openPlay();
+}
+function levelBegin(withDemo) { const r = RUN; if (!r || r.kind !== 'level' || r.phase !== 'intro') return; const L = lvOf(r); r.plan = levelPlan(L, withDemo && !L.boss); r.i = -1; levelNext(); }
+function levelNext() {
+  const r = RUN; if (!r) return;
+  r.i++;
+  if (r.i >= r.plan.length) { finishLevel(); return; }
+  const e = r.plan[r.i]; r.entry = e; r.input = ''; r.covered = false; r.locked = false; r.lastWrong = ''; r.t0 = now();
+  if (e.mode === 'demo') { r.phase = 'demo'; r.demo = 0; }
+  else if (e.mode === 'fill') { r.phase = 'fill'; startFill(e.blanks); }
+  else r.phase = 'solo';
+  renderLevel(); updateBar(); updatePts();
+}
+function startFill(blanks) {
+  const r = RUN, it = r.entry.it, n = it.slots.length, g = n - blanks;
+  r.fill = { vals: it.slots.map((s, i) => (i < g ? s.v : null)), st: it.slots.map((s, i) => (i < g ? 'given' : 'blank')), active: -1, tries: 0, perfect: true, just: -1 };
+  fillActivate();
+}
+function fillActivate() { const r = RUN, f = r.fill, i = f.st.indexOf('blank'); f.active = i; f.tries = 0; r.input = ''; if (i >= 0) f.st[i] = 'active'; }
+function rowsHTML(it, v) { return '<div class="steps">' + it.rows.map(row => '<p class="row">' + rowInner(it, row, v) + '</p>').join('') + '</div>'; }
+function rowInner(it, row, v) {
+  return row.map(tok => {
+    if (typeof tok === 'string') return esc(tok);
+    if (tok.s !== undefined) {
+      const i = tok.s, sl = it.slots[i], st = v.st[i], val = v.vals[i], has = val !== null && val !== undefined, choice = sl.kind === 'choice';
+      const txt = has ? dispVal(sl, val) : (st === 'active' ? (choice ? '?' : esc(v.input || '')) : '');
+      return '<span class="slot ' + st + (st === 'active' && !v.input && !choice ? ' empty' : '') + (v.just === i ? ' pop' : '') + '">' + txt + '</span>';
+    }
+    if (tok.m !== undefined) { const val = v.vals[tok.m]; return val !== null && val !== undefined ? '<span class="mir">' + dispVal(it.slots[tok.m], val) + '</span>' : '<span class="mir wait">…</span>'; }
+    return '';
+  }).join('');
+}
+const dispVal = (sl, val) => (sl.kind === 'choice' ? esc(String(val)) : fmt(val));
+function qhead(it, done) { return '<div class="qhead"><span>' + it.q + '</span><span class="eqs">=</span><span class="box' + (done ? ' ok pop' : '') + '" id="qbox">' + (done ? fmt(it.ans) : '?') + '</span></div>'; }
+function renderLevel() {
+  const r = RUN, L = lvOf(r);
+  el.keys.classList.remove('off'); el.keys.classList.toggle('nominus', r.wid !== 'neg');
+  if (r.phase === 'vec') { renderVec(); return; }
+  if (r.phase === 'intro') { el.stage.innerHTML = levelIntroHTML(r, L); setDock('actions', introButtons(L)); return; }
+  const it = r.entry.it;
+  if (r.phase === 'demo') { el.stage.innerHTML = demoHTML(r, it); setDock('actions', demoButtons(r, it)); return; }
+  if (r.phase === 'fill') {
+    const f = r.fill, sl = f.active >= 0 ? it.slots[f.active] : null;
+    el.stage.innerHTML = fillHTML(r, it);
+    if (sl && sl.kind === 'choice') setDock('choices', sl.opts.map((o, i) => '<button type="button" data-act="choice" data-i="' + i + '">' + esc(cap(o)) + '</button>').join(''));
+    else { setDock('keys'); if (!sl) el.keys.classList.add('off'); }
+    return;
+  }
+  if (r.phase === 'solo') { el.stage.innerHTML = soloHTML(r, it, L); setDock('keys'); updateBox(); return; }
+  if (r.phase === 'fix') { el.stage.innerHTML = lfixHTML(r, it); setDock('keys'); updateBox(); const bx = $('#box'); if (bx && bx.scrollIntoView) bx.scrollIntoView({ block: 'nearest' }); }
+}
+function levelIntroHTML(r, L) {
+  const w = WORLDK[r.wid], st = lvState(L.id);
+  const what = L.boss ? '20 de calcule, singur. Pentru trofeu: 16 corecte.'
+    : (st.p ? 'Completezi 2, apoi faci ' + L.ns + ' singur.' : 'Vezi 2 exemple, completezi ' + L.nf + ' exerciții, apoi faci ' + L.ns + ' singur.') + ' Cu ' + need2(L) + ' din ' + L.ns + ' corecte singur primești 2 stele și se deschide nivelul următor.';
+  return '<div class="intro card"><span class="tag">' + w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (r.li + 1)) + '</span><h2>' + L.name + '</h2><div class="rule">' + esc(L.rule) + '</div><p class="small">' + what + '</p>' +
+    '<p class="small">Scrii rezultatul și apeși <b>OK</b>. Contează primul răspuns.</p>' + (st.s ? '<p class="small muted">Stelele tale: ' + starsHTML(st.s) + '</p>' : '') + '</div>';
+}
+function introButtons(L) {
+  const st = lvState(L.id);
+  if (L.boss) return btn('lbegin', 'Începem', true, 'data-demo="0"');
+  if (st.p) return btn('lbegin', 'Cu exemple', false, 'data-demo="1"') + btn('lbegin', 'Începem', true, 'data-demo="0"');
+  return btn('lbegin', 'Începem', true, 'data-demo="1"');
+}
+function demoHTML(r, it) {
+  const n = it.slots.length, sh = r.demo, done = sh >= n, di = r.plan.slice(0, r.i + 1).filter(e => e.mode === 'demo').length;
+  const vals = it.slots.map((s, i) => (i < sh ? s.v : null)), st = it.slots.map((s, i) => (i < sh ? 'shown' : 'blank'));
+  const whys = it.slots.slice(0, sh).map((s, i) => '<p' + (i === sh - 1 ? ' class="now"' : '') + '>' + esc(s.why) + '</p>').join('');
+  return '<div class="lvl"><span class="tag new">Exemplul ' + di + ' din 2 · urmărește</span>' + qhead(it, done) + rowsHTML(it, { vals, st, just: sh - 1 }) +
+    (it.vis ? '<div class="visrow">' + visSVG(it.vis, done) + '</div>' : '') +
+    '<div class="whys">' + (whys || '<p class="now">Apasă „Mai departe” și vezi primul pas.</p>') + '</div></div>';
+}
+function demoButtons(r, it) {
+  const done = r.demo >= it.slots.length, nextDemo = r.plan[r.i + 1] && r.plan[r.i + 1].mode === 'demo';
+  if (!done) return btn('lskipdemo', 'Sari peste', false) + btn('lnext', 'Mai departe', true);
+  return btn('lcont', nextDemo ? 'Încă un exemplu' : 'Acum tu!', true);
+}
+function demoStep() {
+  const r = RUN; if (!r || r.phase !== 'demo') return;
+  const it = r.entry.it; if (r.demo >= it.slots.length) return;
+  r.demo++; SFX.slot(r.demo - 1); renderLevel();
+  if (r.demo >= it.slots.length) { setTimeout(() => { SFX.item(0); burstAt($('#qbox'), 14, 5); }, 120); }
+}
+function skipDemos() { const r = RUN; if (!r) return; while (r.plan[r.i + 1] && r.plan[r.i + 1].mode === 'demo') r.i++; levelNext(); }
+function fillHTML(r, it) {
+  const f = r.fill, sl = f.active >= 0 ? it.slots[f.active] : null, done = f.active < 0;
+  const ask = sl ? (f.tries ? '<div class="helpbox">' + esc(sl.help || sl.ask) + '</div>' : esc(sl.ask)) : '';
+  return '<div class="lvl"><span class="tag">' + (r.entry.helpMode ? 'Cu truc: completează pașii' : 'Completează căsuțele') + '</span>' + qhead(it, done) +
+    rowsHTML(it, { vals: f.vals, st: f.st, input: r.input, just: f.just }) + '<div class="ask2" id="ask">' + ask + '</div><div class="fb" id="fb"></div></div>';
+}
+function updateActiveSlot() { const s = el.stage.querySelector('.slot.active'); if (s) { s.textContent = RUN.input; s.classList.toggle('empty', !RUN.input); } }
+function fillKey(k) {
+  const r = RUN, f = r.fill; if (f.active < 0) return;
+  const sl = r.entry.it.slots[f.active]; if (sl.kind !== 'num') return;
+  if (k === 'ok') { if (!blank(r.input)) { if (parseInput(r.input) === sl.v) slotRight(); else slotWrong(); } return; }
+  if (!typeInto(k, r.wid === 'neg')) return;
+  updateActiveSlot();
+}
+function levelChoice(idx) {
+  const r = RUN; if (!r || r.kind !== 'level' || r.phase !== 'fill' || r.locked) return;
+  const f = r.fill; if (f.active < 0) return;
+  const sl = r.entry.it.slots[f.active]; if (sl.kind !== 'choice') return;
+  if (sl.opts[idx] === sl.v) slotRight(); else slotWrong();
+}
+function slotRight() {
+  const r = RUN, f = r.fill, i = f.active, sl = r.entry.it.slots[i];
+  f.vals[i] = sl.v; f.st[i] = 'ok'; f.just = i;
+  if (!f.tries) { S.xp += 2; r.stats.xp += 2; }
+  SFX.slot(f.st.filter(s => s === 'ok' || s === 'helped').length - 1);
+  fillActivate();
+  if (f.active < 0) { fillDone(); return; }
+  renderLevel(); f.just = -1; updatePts();
+}
+function slotWrong() {
+  const r = RUN, f = r.fill, i = f.active, sl = r.entry.it.slots[i];
+  f.tries++; f.perfect = false;
+  if (f.tries >= 2) {
+    f.vals[i] = sl.v; f.st[i] = 'helped'; f.just = i; SFX.soft(); r.input = ''; r.locked = true;
+    renderLevel(); f.just = -1; el.keys.classList.add('off');
+    setFb('Uite ce trebuia. Mergem mai departe.', 'info');
+    later(() => { r.locked = false; fillActivate(); if (f.active < 0) fillDone(); else renderLevel(); }, 1000);
+    return;
+  }
+  SFX.bad(); r.input = ''; renderLevel();
+  setFb('Nu e bine. Mai încearcă o dată.', 'info');
+  const s = el.stage.querySelector('.slot.active'); if (s) s.classList.add('shake');
+}
+function fillDone() {
+  const r = RUN, f = r.fill, perfect = f.perfect && !r.entry.helpMode;
+  const day = today(); day.q++; if (perfect) day.ok++; day.ms += Math.min(now() - r.t0, 60000);
+  if (perfect) { r.combo++; r.stats.perfect++; r.stats.best = Math.max(r.stats.best, r.combo); } else r.combo = 0;
+  // Daca jocul a aratat un raspuns („Uite ce trebuia”), copilul doar l-a copiat: 1 punct.
+  const shown = f.st.includes('helped');
+  const pts = perfect ? 10 : (shown ? 1 : 5); S.xp += pts; r.stats.xp += pts;
+  save();
+  renderLevel(); f.just = -1;
+  if (shown) setFb('Acum o știi. Data viitoare încearcă singur. +' + pts, 'info');
+  else reward(perfect, false, pts, $('#qbox'), lvOf(r).praise);
+  r.locked = true; later(levelNext, perfect ? 1150 : 1450);
+}
+function soloHTML(r, it, L) {
+  const counted = r.plan.filter(e => e.mode === 'solo' && !e.extra), pos = counted.indexOf(r.plan[r.i]) + 1;
+  const tag = r.entry.extra ? 'Încă o dată' : (L.boss ? 'Nivelul final · ' : 'Singur · ') + pos + ' din ' + counted.length;
+  return '<div class="ask"><span class="tag">' + tag + '</span><div class="q' + (it.q.length > 7 ? ' long' : '') + '"><span class="qt">' + it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div>' +
+    '<div class="fb" id="fb"></div><div class="qbtns"><button class="pill" type="button" data-act="ltruc">' + ICON.bulb + 'Truc</button><button class="pill" type="button" data-act="lskip">Nu știu</button></div></div>';
+}
+function lfixHTML(r, it) {
+  const vals = it.slots.map(s => s.v), st = it.slots.map(() => 'shown');
+  return '<div class="learn"><span class="tag">' + r.fixMsg + '</span><div class="lc' + (r.covered ? ' covered' : '') + '" id="lc"><div class="eq">' + it.q + ' = ' + (r.lastWrong ? '<s>' + esc(r.lastWrong) + '</s>' : '') + '<span class="ans">' + fmt(it.ans) + '</span></div>' +
+    '<div class="lbody">' + rowsHTML(it, { vals, st }) + (it.vis && it.rows.length < 3 ? visSVG(it.vis, true) : '') + '</div></div>' +
+    '<div class="cover"><span class="small muted">Acoperă și scrie:</span><div class="q sm"><span class="qt">' + it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div></div><div class="fb" id="fb"></div></div>';
+}
+function soloKey(k) {
+  const r = RUN;
+  if (k === 'ok') { levelSubmit('ok'); return; }
+  if (!typeInto(k, r.wid === 'neg')) return;
+  if (k !== 'back' && r.phase === 'fix' && !r.covered) { r.covered = true; const lc = $('#lc'); if (lc) lc.classList.add('covered'); }
+  updateBox();
+}
+const FIX_MSGS = ['Nu-i nimic. Uite cum se face:', 'Aproape. Hai să vedem pașii:', 'Îl prindem acum:'];
+function levelSubmit(kind) {
+  const r = RUN; if (!r || r.locked) return;
+  const e = r.entry, it = e.it, L = lvOf(r);
+  if (kind !== 'skip' && blank(r.input)) return;
+  const correct = kind !== 'skip' && parseInput(r.input) === it.ans;
+  if (r.phase === 'fix') {
+    if (correct) { SFX.ok(); const bx = $('#box'); if (bx) bx.classList.add('ok'); r.locked = true; later(levelNext, 450); }
+    else { SFX.soft(); shakeBox(); r.input = ''; updateBox(); r.covered = false; const lc = $('#lc'); if (lc) lc.classList.remove('covered'); setFb('Mai uită-te o dată, apoi scrie.', 'info'); }
+    return;
+  }
+  const dt = typedAt(r) - r.t0, fast = correct && dt <= L.fast, day = today();
+  day.q++; day.ms += Math.min(now() - r.t0, 30000); if (correct) day.ok++;
+  if (e.counted) { r.stats.n++; if (correct) { r.stats.ok++; if (fast) r.stats.fast++; } e.counted = false; }
+  if (it.fk) famUpdate(it.fk.m, it.fk.k, { correct, dt });
+  if (correct) {
+    r.combo++; r.stats.best = Math.max(r.stats.best, r.combo);
+    const pts = 10 + (fast ? 5 : 0); S.xp += pts; r.stats.xp += pts;
+    const bx = $('#box'); if (bx) bx.classList.add(fast ? 'fast' : 'ok');
+    save(); reward(true, fast, pts, bx, L.praise);
+    r.locked = true; later(levelNext, fast ? 650 : 850);
+    return;
+  }
+  r.combo = 0; updateCombo();
+  if (r.extra < 3) { r.plan.splice(Math.min(r.plan.length, r.i + 4), 0, { mode: 'solo', it: e.it, extra: true }); r.extra++; }
+  save();
+  r.lastWrong = kind === 'skip' ? '' : r.input;
+  r.fixMsg = kind === 'skip' ? 'Bine că ai zis. Uite cum se face:' : pick(FIX_MSGS);
+  // La tablă îl ajută vecinii (7 · 7 și 7 · 9); la celelalte vede pașii rezolvați.
+  const xy = r.wid === 'mul' ? mulXY(it.q) : null;
+  const toFix = xy ? () => vecStart(xy[0], xy[1], r.lastWrong, it) : () => { r.phase = 'fix'; r.input = ''; r.covered = false; r.locked = false; renderLevel(); };
+  if (kind === 'skip') toFix(); else { SFX.bad(); shakeBox('bad'); r.locked = true; later(toFix, 420); }
+}
+function soloTruc() {
+  const r = RUN; if (!r || r.phase !== 'solo' || r.locked) return;
+  const e = r.entry;
+  if (e.counted) { r.stats.n++; e.counted = false; }
+  r.combo = 0; updateCombo();
+  e.helpMode = true; r.phase = 'fill'; startFill(e.it.slots.length); r.fill.perfect = false;
+  renderLevel();
+}
+function finishLevel() {
+  const r = RUN, L = lvOf(r), n = L.ns, stars = starsFor(L, r.stats.ok, r.stats.fast);
+  const st = lvState(L.id), prev = st.s;
+  st.s = Math.max(prev, stars); st.p++; st.b = Math.max(st.b, r.stats.ok); S.lv[L.id] = st;
+  const bonus = 30 + 10 * stars; S.xp += bonus; r.stats.xp += bonus;
+  today().r++;
+  const w = WORLDK[r.wid], nextL = w.levels[r.li + 1];
+  const unlocked = stars >= 2 && prev < 2 && nextL ? nextL : null, trophy = L.boss && stars >= 2 && prev < 2 ? L.trophy : null;
+  save();
+  const res = { wid: r.wid, li: r.li, L, stars, prev, ok: r.stats.ok, fast: r.stats.fast, n, xp: r.stats.xp, best: r.stats.best, unlocked, trophy, rankUp: levelOf(S.xp) > levelOf(r.xp0) ? levelOf(S.xp) : 0 };
+  RUN = null; closePlay();
+  renderLevelDone(res); show('done');
+  for (let i = 0; i < stars; i++) setTimeout(() => SFX.star(i), 380 + i * 380);
+  if (stars >= 2) setTimeout(confetti, 420 + stars * 380);
+  if (unlocked || trophy) setTimeout(SFX.unlock, 1100 + stars * 380);
+}
+function bigStars(n) { return '<div class="bigstars" role="img" aria-label="' + nr(n, 'stea', 'stele') + ' din 3">' + [0, 1, 2].map(i => '<svg viewBox="0 0 24 24" class="' + (i < n ? 'on' : 'off') + '" style="animation-delay:' + (0.35 + i * 0.38) + 's" aria-hidden="true"><path d="' + STAR_D + '"/></svg>').join('') + '</div>'; }
+function renderLevelDone(res) {
+  const w = WORLDK[res.wid], L = res.L, nextL = w.levels[res.li + 1];
+  const title = res.stars === 3 ? 'Perfect!' : (res.stars === 2 ? 'Nivel trecut!' : 'Nivel terminat!');
+  let h = '<div class="hero"><span class="tag">' + w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (res.li + 1)) + '</span><h1>' + title + '</h1>' + bigStars(res.stars) +
+    '<p>' + res.ok + ' din ' + res.n + ' corecte singur · ' + nr(res.fast, 'fulger', 'fulgere') + '</p></div>';
+  h += '<div class="tiles"><div class="tilestat"><b>+' + res.xp + '</b><span>puncte</span></div><div class="tilestat"><b>' + res.best + '</b><span>la rând, maxim</span></div><div class="tilestat"><b>' + res.stars + '/3</b><span>stele</span></div></div>';
+  if (res.rankUp) h += '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + res.rankUp + ', ' + rankName(res.rankUp) + '!</p>';
+  if (res.trophy) h += '<div class="unlock gold">' + ICON.trophy + '<div><b>Trofeu nou: ' + res.trophy + '!</b><div class="small muted">Ai terminat lumea „' + w.name + '”.</div></div></div>';
+  if (res.unlocked) h += '<div class="unlock">' + ICON.unlock + '<div><b>Nivel nou deschis:</b> ' + res.unlocked.name + '</div></div>';
+  if (res.stars < 2) h += '<div class="card"><b>' + (res.ok >= need2(L) - 2 ? 'Aproape!' : 'Mai exersează!') + '</b> Pentru nivelul următor îți trebuie 2 stele: ' + need2(L) + ' din ' + L.ns + ' corecte când lucrezi singur. Acum știi trucul. Mai încearcă!</div>';
+  else if (res.stars === 2) h += '<p class="small muted center">Pentru 3 stele: ' + (L.boss ? '19 din 20 corecte și 15 fulgere' : 'toate ' + L.ns + ' corecte și ' + need2(L) + ' fulgere') + '. Poți reveni oricând.</p>';
+  const primary = res.stars < 2 ? btn('level', 'Mai încearcă', true, 'data-w="' + res.wid + '" data-l="' + res.li + '"')
+    : (nextL ? btn('level', 'Nivelul următor', true, 'data-w="' + res.wid + '" data-l="' + (res.li + 1) + '"') : btn('home', 'Acasă', true));
+  h += '<div class="btnrow">' + btn('world', 'Drumul nivelurilor', false, 'data-w="' + res.wid + '"') + primary + '</div>';
+  el.done.innerHTML = h;
+}
+
+/* =====================================================================
+   VECINII: după o greșeală la tablă (la niveluri și la antrenament)
+   1. Vede calculul greșit între vecinii lui: 7 · 7 deasupra, 7 · 9 dedesubt. Alege unul și îl scrie.
+   2. Dacă îl știe: 7 · 8 = 63 − 7 = [ ]. Dacă nu-l știe, încearcă celălalt vecin.
+   3. Dacă nu-i știe pe niciunul: pașii trucului, cu căsuțe.
+   ===================================================================== */
+function vecStart(x, y, wrong, steps) {
+  const r = RUN, c = nbCands(x, y);
+  c.forEach(o => { o.st = 'open'; });
+  r.vec = { x, y, p: x * y, wrong: wrong || '', st: 'pick', done: false, c, act: nbFirst(x, c), it: null, f: null, steps, t0: now(), ta: now() };
+  r.phase = 'vec'; r.input = ''; r.locked = false;
+  renderVec();
+}
+function renderVec() {
+  const r = RUN, v = r.vec;
+  setDock('keys'); el.keys.classList.add('nominus'); el.keys.classList.toggle('off', v.done);
+  el.stage.innerHTML = vecHTML(r, v);
+  if (v.f) v.f.just = -1;
+}
+function vecHTML(r, v) {
+  const tq = v.x + ' ' + DOT + ' ' + v.y;
+  if (v.st === 'pick') {
+    const row = (o, i) => {
+      const act = i === v.act && o.st === 'open', cls = o.st === 'bad' ? 'miss' : (act ? 'active' + (r.input ? '' : ' empty') : '');
+      return '<button class="vrow' + (act ? ' act' : '') + (o.st === 'bad' ? ' gone' : '') + '" type="button" data-act="vpick" data-i="' + i + '"' + (o.st === 'open' ? '' : ' disabled') + '>' +
+        '<span>' + o.q + '</span><span class="eqs">=</span><span class="slot ' + cls + '">' + (o.st === 'bad' ? '?' : (act ? esc(r.input) : '')) + '</span></button>';
+    };
+    return '<div class="vec"><span class="tag new">Te ajută vecinii</span><div class="vrows">' + row(v.c[0], 0) +
+      '<div class="vrow tgt" id="vtarget"><span>' + tq + '</span><span class="eqs">=</span>' + (v.wrong ? '<s>' + esc(v.wrong) + '</s>' : '') + '<span class="qm">?</span></div>' +
+      row(v.c[1], 1) + '</div><div class="ask2">Îl știi pe unul dintre ei? Apasă pe el și scrie cât face.</div><div class="fb" id="fb"></div></div>';
+  }
+  const it = v.it, f = v.f, sl = f.active >= 0 ? it.slots[f.active] : null, rv = { vals: f.vals, st: f.st, input: r.input, just: f.just };
+  const ask = '<div class="ask2" id="ask">' + (sl ? (f.tries ? '<div class="helpbox">' + esc(sl.help || sl.ask) + '</div>' : esc(sl.ask)) : '') + '</div><div class="fb" id="fb"></div>';
+  if (v.st === 'bridge') {
+    const o = v.c.find(x => x.st === 'ok'), known = '<p class="row"><span>' + o.q + ' = </span><span class="slot ok">' + fmt(o.v) + '</span></p>', main = '<p class="row" id="vtarget">' + rowInner(it, it.rows[0], rv) + '</p>';
+    return '<div class="vec"><span class="tag new">' + (v.done ? (f.st.indexOf('helped') >= 0 ? 'Gata!' : 'L-ai aflat singur!') : 'Pornești de la vecinul pe care îl știi') + '</span><div class="steps">' + (o.z < v.y ? known + main : main + known) + '</div>' +
+      '<div class="visrow">' + visSVG(it.vis, true) + '</div>' + ask + '</div>';
+  }
+  return '<div class="vec"><span class="tag new">Pas cu pas, cu trucul</span>' + qhead(it, v.done) + rowsHTML(it, rv) +
+    (it.vis && it.rows.length < 3 ? '<div class="visrow">' + visSVG(it.vis, v.done) + '</div>' : '') + ask + '</div>';
+}
+function vecPick(i) {
+  const r = RUN; if (!r || r.phase !== 'vec' || r.locked) return;
+  const v = r.vec; if (v.st !== 'pick' || !v.c[i] || v.c[i].st !== 'open' || v.act === i) return;
+  v.act = i; r.input = ''; v.ta = now(); renderVec();
+}
+function vecKey(k) {
+  const r = RUN, v = r.vec; if (!v || v.done) return;
+  if (v.st === 'pick') {
+    if (k === 'ok') { if (r.input !== '') vecCheck(); return; }
+    if (!typeInto(k, false)) return;
+    const s = el.stage.querySelector('.vrow.act .slot'); if (s) { s.textContent = r.input; s.classList.toggle('empty', !r.input); }
+    return;
+  }
+  const f = v.f; if (!f || f.active < 0) return;
+  if (k === 'ok') { if (!blank(r.input)) { if (parseInput(r.input) === v.it.slots[f.active].v) vecRight(); else vecWrong(); } return; }
+  if (!typeInto(k, false)) return;
+  updateActiveSlot();
+}
+function vecCheck() {
+  const r = RUN, v = r.vec, o = v.c[v.act], typed = r.input, correct = parseInput(typed) === o.v;
+  // Harta află și de vecini: un vecin greșit devine „de lucrat”.
+  if (o.fk) famUpdate('mul', o.fk.k, { correct, dt: typedAt(r) - v.ta, hinted: true });
+  if (correct) {
+    o.st = 'ok'; S.xp += 2; r.stats.xp += 2; save(); SFX.ok();
+    v.st = 'bridge'; vecFill(nbBridge(v.x, v.y, o));
+    renderVec(); updatePts();
+    return;
+  }
+  o.st = 'bad'; save();
+  const other = v.c.findIndex(x => x.st === 'open');
+  if (other >= 0) {
+    v.act = other; r.input = ''; v.ta = now(); SFX.soft(); renderVec();
+    setFb('Nu e ' + esc(typed) + '. Încearcă vecinul ' + (other === 0 ? 'de sus.' : 'de jos.'), 'info');
+    return;
+  }
+  v.st = 'steps'; vecFill(v.steps); SFX.soft(); renderVec();
+  setFb('Nu-i nimic. Îl facem pas cu pas.', 'info');
+}
+function vecFill(it) { const v = RUN.vec; v.it = it; v.f = { vals: it.slots.map(() => null), st: it.slots.map(() => 'blank'), active: -1, tries: 0, just: -1 }; vecNextSlot(); }
+function vecNextSlot() { const r = RUN, f = r.vec.f, i = f.st.indexOf('blank'); f.active = i; f.tries = 0; r.input = ''; if (i >= 0) f.st[i] = 'active'; }
+function vecRight() {
+  const r = RUN, v = r.vec, f = v.f, i = f.active;
+  f.vals[i] = v.it.slots[i].v; f.st[i] = 'ok'; f.just = i;
+  if (!f.tries) { S.xp += 2; r.stats.xp += 2; }
+  SFX.slot(f.st.filter(s => s === 'ok' || s === 'helped').length - 1);
+  vecNextSlot();
+  if (f.active < 0) { vecDone(); return; }
+  renderVec(); updatePts();
+}
+function vecWrong() {
+  const r = RUN, v = r.vec, f = v.f, i = f.active;
+  f.tries++;
+  if (f.tries >= 2) {
+    f.vals[i] = v.it.slots[i].v; f.st[i] = 'helped'; f.just = i; SFX.soft(); r.input = ''; r.locked = true;
+    renderVec(); el.keys.classList.add('off');
+    setFb('Uite ce trebuia. Mergem mai departe.', 'info');
+    later(() => { r.locked = false; vecNextSlot(); if (f.active < 0) vecDone(); else renderVec(); }, 1000);
+    return;
+  }
+  SFX.bad(); r.input = ''; renderVec();
+  const s = el.stage.querySelector('.slot.active'); if (s) s.classList.add('shake');
+}
+function vecDone() {
+  const r = RUN, v = r.vec;
+  v.done = true; r.locked = true; r.input = '';
+  const day = today(); day.ms += Math.min(now() - v.t0, 60000); save();
+  renderVec(); updatePts();
+  setFb('Ține minte: ' + v.x + ' ' + DOT + ' ' + v.y + ' = ' + v.p + '.', 'ok');
+  SFX.item(0); burstAt($('#vtarget') || $('#qbox'), 14, 5);
+  later(() => { r.vec = null; if (r.kind === 'level') levelNext(); else next(); }, 1800);
+}
+
+/* =====================================================================
+   TESTUL DE PORNIRE
+   ===================================================================== */
+function startTest() {
+  const p = S.test.partial;
+  RUN = { kind: 'test', phase: 'intro', list: testList(), at: p ? p.at : 0, res: p ? Object.assign({}, p.res) : {}, xrow: p ? Object.assign({}, p.xrow) : {}, stop: p ? Object.assign({}, p.stop) : {},
+    tries: 0, it: null, input: '', t0: 0, locked: false, lastQ: '', stats: { q: 0, ok: 0, xp: 0 }, xp0: S.xp };
+  openPlay();
+}
+function renderTest() {
+  const r = RUN;
+  el.keys.classList.remove('off');
+  if (r.phase === 'intro') {
+    const p = S.test.partial;
+    el.stage.innerHTML = '<div class="intro card"><span class="tag">Testul de pornire</span><h2>' + (p ? 'Continuăm testul' : 'Hai să vedem ce știi deja') + '</h2>' +
+      '<p>Calcule din toate lumile: tabla, împărțiri, adunări și scăderi, numere mari și negative. Cam 10 minute. Poți face pauză: data viitoare continui de unde ai rămas.</p>' +
+      '<p>Scrii rezultatul și apeși <b>OK</b>. Contează primul răspuns. Dacă nu știi, apasă <b>„Nu știu”</b>. E în regulă: așa aflăm de unde începi.</p>' +
+      '<label class="small" for="nume">Numele tău (apare doar în raportul pe care îl trimiți):</label><input class="name" id="nume" type="text" autocomplete="given-name" maxlength="30" value="' + esc(S.name || '') + '"></div>';
+    setDock('actions', btn('tbegin', p ? 'Continuăm' : 'Începem testul', true));
+    return;
+  }
+  const t = r.list[r.at], w = WORLDK[t.wid];
+  el.keys.classList.toggle('nominus', t.wid !== 'neg');
+  el.stage.innerHTML = '<div class="ask"><span class="tag">Test · ' + w.name + '</span><div class="q' + (r.it.q.length > 7 ? ' long' : '') + '"><span class="qt">' + r.it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div><div class="fb" id="fb"></div><div class="qbtns"><button class="pill" type="button" data-act="tskip">Nu știu</button></div></div>';
+  setDock('keys'); updateBox();
+}
+function testBegin() {
+  const inp = $('#nume'); if (inp) { S.name = inp.value.trim().slice(0, 30); save(); }
+  testNext();
+}
+function testNext() {
+  const r = RUN;
+  while (r.at < r.list.length) { const t = r.list[r.at], L = WORLDK[t.wid].levels[t.li]; if (r.stop[t.wid]) { r.res[L.id] = '-'; r.at++; continue; } break; }
+  if (r.at >= r.list.length) { finishTest(); return; }
+  r.tries = 0; testAsk();
+}
+function testAsk() {
+  const r = RUN, t = r.list[r.at], L = WORLDK[t.wid].levels[t.li];
+  let it, k = 0; do { it = L.make(L.pool()[0]); } while (it.q === r.lastQ && ++k < 6);
+  r.lastQ = it.q; r.it = it; r.input = ''; r.locked = false; r.phase = 'q'; r.t0 = now();
+  renderTest(); updateBar();
+}
+function testKey(k) {
+  const r = RUN; if (r.phase !== 'q' || r.locked) return;
+  if (k === 'ok') { testSubmit('ok'); return; }
+  if (!typeInto(k, r.list[r.at].wid === 'neg')) return;
+  updateBox();
+}
+function testSubmit(kind) {
+  const r = RUN; if (!r || r.locked || r.phase !== 'q') return;
+  if (kind !== 'skip' && blank(r.input)) return;
+  const it = r.it, t = r.list[r.at], L = WORLDK[t.wid].levels[t.li];
+  const correct = kind !== 'skip' && parseInput(r.input) === it.ans, dt = typedAt(r) - r.t0, fast = correct && dt <= L.fast + 2000;
+  r.stats.q++; const day = today(); day.q++; day.ms += Math.min(now() - r.t0, 30000);
+  if (correct) { r.stats.ok++; day.ok++; S.xp += 5; r.stats.xp += 5; }
+  if (it.fk) famUpdate(it.fk.m, it.fk.k, { correct, dt, place: S.modes[it.fk.m].f[it.fk.k].n === 0 });
+  r.tries++;
+  const v = testVerdict(correct, fast, r.tries);
+  if (v) {
+    r.res[L.id] = v;
+    if (v === 'x') { r.xrow[t.wid] = (r.xrow[t.wid] || 0) + 1; if (r.xrow[t.wid] >= 2) r.stop[t.wid] = true; } else r.xrow[t.wid] = 0;
+    r.at++;
+  }
+  S.test.partial = { at: r.at, res: r.res, xrow: r.xrow, stop: r.stop }; save();
+  if (correct) { SFX.ok(); const bx = $('#box'); if (bx) bx.classList.add('ok'); setFb('Corect!', 'ok'); } else setFb('Notat. Mergem mai departe.', 'info');
+  updatePts(); r.locked = true;
+  later(() => { if (v) testNext(); else testAsk(); }, correct ? 450 : 700);
+}
+function finishTest() {
+  const r = RUN;
+  applyTest(r.res);
+  S.test = { done: true, date: dayKey(), res: Object.assign({}, r.res), partial: null };
+  today().r++;
+  save();
+  const rankUp = levelOf(S.xp) > levelOf(r.xp0) ? levelOf(S.xp) : 0;
+  RUN = null; closePlay(); renderTestDone(rankUp); show('done'); confetti();
+}
+function testResultsHTML() {
+  const res = S.test.res;
+  return '<div class="legend"><span><i class="sw s3"></i>știi</span><span><i class="sw s2"></i>știi, dar încet</span><span><i class="sw s1"></i>de învățat</span><span><i class="sw"></i>netestat</span></div>' +
+    WORLDS.map(w => '<section class="card"><h3>' + w.name + '</h3><div class="chips">' + w.levels.filter(L => !L.boss).map(L => { const v = res[L.id] || '-'; return '<span class="chip ' + ({ k: 'k', s: 's', x: 'x' }[v] || 'u') + '">' + L.name + '</span>'; }).join('') + '</div></section>').join('');
+}
+function renderTestDone(rankUp) {
+  const res = S.test.res, list = testList(), known = list.filter(t => res[WORLDK[t.wid].levels[t.li].id] === 'k').length;
+  el.done.innerHTML = '<div class="hero"><span class="tag">Testul de pornire</span><h1>Testul e gata!</h1><p>Știi deja <b>' + known + ' din ' + nr(list.length, 'tip', 'tipuri') + '</b> de calcule. Nivelurile pe care le știi s-au deschis cu 2 stele.</p></div>' +
+    (rankUp ? '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + rankUp + ', ' + rankName(rankUp) + '!</p>' : '') +
+    testResultsHTML() + '<p class="center">Începi de aici:</p>' + ctaHTML() +
+    '<div class="btnrow">' + btn('report', 'Trimite rezultatul', false) + btn('home', 'Acasă', false) + '</div>';
+}
+
+/* =====================================================================
+   ANTRENAMENTUL CU HARTĂ (repetare) și SPRINTUL
+   ===================================================================== */
+function snapshotLevels(mode) { const m = {}; FAM.forEach(f => { m[f.k] = S.modes[mode].f[f.k].l; }); return m; }
+function newRun(kind, mode, items) {
+  return { kind, mode, items, i: -1, phase: 'ask', input: '', q: null, hinted: false, covered: false, locked: false, lastWrong: '', fixMsg: '', combo: 0,
+    stats: { q: 0, ok: 0, fast: 0, xp: 0, row: 0, best: 0, wrongRow: 0, extra: 0 }, before: snapshotLevels(mode), xp0: S.xp, t0: 0 };
+}
+function startTrain(mode) {
+  if (!MODES[mode]) mode = 'mul';
+  S.last = mode; save();
+  if (!S.modes[mode].placed) {
+    const todo = shuffle(FAM.filter(f => S.modes[mode].f[f.k].n === 0)).map(f => ({ k: f.k, type: 'place' }));
+    if (!todo.length) { S.modes[mode].placed = true; save(); startTrain(mode); return; }
+    RUN = newRun('place', mode, todo); RUN.phase = 'intro';
+    openPlay();
+    return;
+  }
+  RUN = newRun('round', mode, buildFamRound(mode));
+  openPlay();
+  next();
+}
+function next() {
+  const r = RUN; if (!r) return;
+  r.i++;
+  if (r.i >= r.items.length) { finishRun(); return; }
+  const it = r.items[r.i];
+  r.input = ''; r.hinted = false; r.covered = false; r.locked = false; r.lastWrong = '';
+  r.q = famQuestion(r.mode, FAMK[it.k]);
+  r.phase = it.type === 'teach' ? 'teach' : (it.type === 'place' ? 'place' : 'ask');
+  if (it.type === 'teach') famTeach(r.mode, it.k);
+  r.t0 = now();
+  renderStage(); updateBar(); updatePts();
+}
+function renderStage() {
+  const r = RUN, q = r.q, ph = r.phase;
+  setDock('keys');
+  el.keys.classList.add('nominus');
+  el.keys.classList.toggle('off', ph === 'intro' || ph === 'count');
+  if (ph === 'vec') { renderVec(); return; }
+  if (ph === 'intro') { el.stage.innerHTML = r.kind === 'sprint' ? sprintIntroHTML() : placeIntroHTML(); return; }
+  if (ph === 'count') { el.stage.innerHTML = '<div class="count" id="count">3</div>'; return; }
+  if (!q) { el.stage.innerHTML = ''; return; }
+  if (ph === 'teach' || ph === 'fix') { el.stage.innerHTML = learnHTML(); updateBox(); return; }
+  const it = r.items[r.i];
+  let tag = '';
+  if (ph === 'place') tag = '<span class="tag">Harta ta · ' + (r.i + 1) + ' din ' + r.items.length + '</span>';
+  else if (ph === 'sprint') tag = '<span class="tag">Corecte: ' + r.score + ' · ' + (r.i + 1) + ' din 30</span>';
+  else if (it && it.rep) tag = '<span class="tag">Încă o dată</span>';
+  const btns = ph === 'place' ? '<button class="pill" type="button" data-act="skip">Nu știu încă</button>'
+    : ph === 'sprint' ? '<button class="pill" type="button" data-act="skip">Sari</button>'
+    : '<button class="pill" type="button" data-act="hint">' + ICON.bulb + 'Truc</button><button class="pill" type="button" data-act="skip">Nu știu</button>';
+  el.stage.innerHTML = '<div class="ask">' + tag +
+    '<div class="q' + (q.text.length > 7 ? ' long' : '') + '" id="qq"><span class="qt">' + q.text + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div>' +
+    '<div class="fb" id="fb"></div><div class="qbtns">' + btns + '</div><div class="hint card" id="hint" hidden></div></div>';
+  updateBox();
+}
+function placeIntroHTML() {
+  const n = RUN.items.length, M = MODES[RUN.mode];
+  return '<div class="intro card"><span class="tag">Harta ta · ' + M.name + '</span><h2>Hai să vedem ce știi deja</h2>' +
+    '<p>' + nr(n, 'calcul', 'calcule') + ', fiecare o singură dată. Nu e un test și nu are ceas.</p>' +
+    '<p>Dacă trebuie să numeri pe degete, apasă <b>„Nu știu încă”</b>. Așa harta arată corect ce ai de învățat.</p>' +
+    '<button class="btn primary" type="button" data-act="begin">Începem</button></div>';
+}
+function sprintIntroHTML() {
+  const rec = sprintRecord();
+  return '<div class="intro card"><span class="tag">Sprint · un minut</span><h2>Câte faci într-un minut?</h2>' +
+    '<p>Aceleași 30 de calcule ca pe foaie, în aceeași ordine. Scrii rezultatul și apeși <b>OK</b>, repede, fără degete. Dacă nu știi unul, apasă <b>„Sari”</b>.</p>' +
+    '<p class="muted">' + (rec ? 'Recordul tău: <b>' + rec + '</b>. ' : '') + 'Ținta: <b>' + SPRINT_TARGET + '</b>.</p>' +
+    '<button class="btn primary" type="button" data-act="go">Start</button></div>';
+}
+function learnHTML() {
+  const r = RUN, q = r.q, teach = r.phase === 'teach';
+  const tag = teach ? '<span class="tag new">Calcul nou · învață-l cu trucul</span>' : '<span class="tag">' + r.fixMsg + '</span>';
+  const wrong = !teach && r.lastWrong ? '<s>' + esc(r.lastWrong) + '</s>' : '';
+  return '<div class="learn">' + tag +
+    '<div class="lc' + (r.covered ? ' covered' : '') + '" id="lc"><div class="eq">' + q.text + ' = ' + wrong + '<span class="ans">' + fmt(q.ans) + '</span></div>' +
+    '<div class="lbody">' + visSVG(q.vis, true) + '<div class="lines">' + q.post.map(l => '<p>' + l + '</p>').join('') + '</div></div></div>' +
+    '<div class="cover"><span class="small muted">Acoperă și scrie:</span><div class="q sm"><span class="qt">' + q.text + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div></div>' +
+    '<div class="fb" id="fb"></div></div>';
+}
+function showHint() {
+  const r = RUN; if (!r || r.phase !== 'ask' || r.hinted) return;
+  r.hinted = true;
+  const h = $('#hint'); h.innerHTML = visSVG(r.q.vis, false) + '<div class="lines">' + r.q.pre.map(l => '<p>' + l + '</p>').join('') + '</div>'; h.hidden = false;
+  const hb = document.querySelector('[data-act="hint"]'); if (hb) hb.remove();
+}
+function trainKey(k) {
+  const r = RUN; if (!r || r.locked) return;
+  const ph = r.phase;
+  if (['ask', 'place', 'teach', 'fix', 'sprint'].indexOf(ph) < 0) return;
+  if (k === 'ok') { submit('ok'); return; }
+  if (!typeInto(k, false)) return;
+  if (k !== 'back' && (ph === 'teach' || ph === 'fix') && !r.covered) { r.covered = true; const lc = $('#lc'); if (lc) lc.classList.add('covered'); }
+  updateBox();
+}
+const TRAIN_FIX = ['Nu-i nimic. Uite trucul:', 'Aproape. Hai să-l vedem:', 'Îl prindem acum:'];
+function submit(kind) {
+  const r = RUN; if (!r || r.locked) return;
+  const q = r.q, val = parseInput(r.input), correct = kind !== 'skip' && val === q.ans;
+  const ph = r.phase;
+  if (kind !== 'skip' && blank(r.input)) return;
+
+  if (ph === 'teach' || ph === 'fix') {
+    if (correct) {
+      SFX.ok(); const bx = $('#box'); if (bx) bx.classList.add('ok');
+      if (ph === 'teach') { S.xp += 5; r.stats.xp += 5; updatePts(); save(); }
+      r.locked = true; later(next, 420);
+    } else {
+      SFX.soft(); shakeBox(); r.input = ''; updateBox(); r.covered = false;
+      const lc = $('#lc'); if (lc) lc.classList.remove('covered');
+      setFb('Mai uită-te o dată, apoi scrie.', 'info');
+    }
+    return;
+  }
+
+  const dt = typedAt(r) - r.t0, it = r.items[r.i], day = today();
+  if (ph === 'sprint') {
+    famUpdate('mul', Math.min(it.a, it.b) + 'x' + Math.max(it.a, it.b), { correct, dt, sprint: true });
+    if (correct) { r.score++; SFX.ok(); const bx = $('#box'); if (bx) bx.classList.add('ok'); r.locked = true; later(sprintNext, 170); }
+    else { r.wrong.push({ t: q.text, a: q.ans }); if (kind !== 'skip') { SFX.bad(); shakeBox('bad'); } r.locked = true; later(sprintNext, kind === 'skip' ? 120 : 300); }
+    return;
+  }
+
+  day.ms += Math.min(now() - r.t0, 30000);
+  if (ph === 'place') {
+    famUpdate(r.mode, it.k, { correct, dt, place: true });
+    day.q++; if (correct) day.ok++;
+    if (correct) { SFX.ok(); const bx = $('#box'); if (bx) bx.classList.add('ok'); setFb('Corect!', 'ok'); S.xp += 5; r.stats.xp += 5; updatePts(); r.locked = true; later(next, 420); }
+    else { setFb(q.text + ' = ' + fmt(q.ans) + ' · îl înveți în curând', 'info'); r.locked = true; later(next, 1500); }
+    save();
+    return;
+  }
+
+  r.stats.q++; day.q++;
+  const fast = correct && !r.hinted && dt <= q.fast;
+  famUpdate(r.mode, it.k, { correct, dt, hinted: r.hinted, rep: !!it.rep });
+  if (correct) {
+    day.ok++; r.stats.ok++; r.stats.row++; r.stats.best = Math.max(r.stats.best, r.stats.row); r.stats.wrongRow = 0; r.combo = r.stats.row;
+    let pts = r.hinted ? 5 : 10; if (fast) { pts += 5; r.stats.fast++; }
+    S.xp += pts; r.stats.xp += pts;
+    const bx = $('#box'); if (bx) bx.classList.add(fast ? 'fast' : 'ok');
+    save(); reward(true, fast, pts, bx, null);
+    r.locked = true; later(next, fast ? 450 : 600);
+    return;
+  }
+  r.stats.row = 0; r.combo = 0; r.stats.wrongRow++; updateCombo();
+  scheduleRepeat(it);
+  if (r.stats.wrongRow >= 2) insertEasy();
+  save();
+  r.lastWrong = kind === 'skip' ? '' : r.input;
+  r.fixMsg = kind === 'skip' ? 'Bine că ai zis. Uite trucul:' : pick(TRAIN_FIX);
+  const xy = r.mode === 'mul' ? mulXY(q.text) : null;
+  const toFix = xy ? () => vecStart(xy[0], xy[1], r.lastWrong, nbSteps(xy[0], xy[1])) : () => { r.phase = 'fix'; r.input = ''; r.covered = false; r.locked = false; renderStage(); };
+  if (kind === 'skip') toFix();
+  else { SFX.bad(); shakeBox('bad'); r.locked = true; later(toFix, 420); }
+}
+function scheduleRepeat(it) {
+  const r = RUN; if (r.stats.extra >= 6) return;
+  for (let j = r.i + 1; j < Math.min(r.items.length, r.i + 6); j++) { const o = r.items[j]; if (o.k === it.k && o.type === 'ask') return; }
+  r.items.splice(Math.min(r.items.length, r.i + 4), 0, { k: it.k, type: 'ask', rep: true });
+  r.stats.extra++;
+}
+function insertEasy() {
+  const r = RUN, st = S.modes[r.mode].f, near = new Set(r.items.slice(Math.max(0, r.i - 4), r.i + 4).map(x => x.k));
+  const c = FAM.filter(f => st[f.k].l >= 3 && !near.has(f.k));
+  if (!c.length) return;
+  r.items.splice(r.i + 1, 0, { k: pick(c).k, type: 'ask' });
+  r.stats.wrongRow = 0;
+}
+function finishRun() {
+  const r = RUN, day = today();
+  day.r++;
+  if (r.kind === 'place') S.modes[r.mode].placed = true;
+  S.xp += 20; r.stats.xp += 20;
+  save();
+  const lvUp = levelOf(S.xp) > levelOf(r.xp0) ? levelOf(S.xp) : 0;
+  const goalNow = day.r === 3 && day.sp > 0;
+  RUN = null; closePlay();
+  renderDone(r, lvUp); show('done');
+  if (lvUp || goalNow) confetti(); else SFX.win();
+}
+function startSprint() {
+  RUN = { kind: 'sprint', mode: 'mul', items: SPRINT.map(p => ({ a: p[0], b: p[1] })), i: -1, phase: 'intro', input: '', score: 0, wrong: [], stats: { xp: 0 }, started: 0, locked: false, q: null, combo: 0 };
+  openPlay();
+}
+function sprintCountdown() {
+  const r = RUN; if (!r || r.phase !== 'intro') return;
+  r.phase = 'count'; renderStage();
+  let n = 3;
+  const tick = () => {
+    if (RUN !== r) return;
+    if (n === 0) { r.phase = 'sprint'; r.started = now(); sprintNext(); requestAnimationFrame(sprintTick); return; }
+    const c = $('#count'); if (c) c.textContent = n;
+    SFX.tick(); n--; setTimeout(tick, 650);
+  };
+  tick();
+}
+function sprintNext() {
+  const r = RUN; if (!r || r.kind !== 'sprint' || r.phase !== 'sprint') return;
+  r.i++;
+  if (r.i >= r.items.length) { sprintEnd(true); return; }
+  const it = r.items[r.i];
+  r.q = { text: it.a + ' ' + DOT + ' ' + it.b, ans: it.a * it.b };
+  r.input = ''; r.locked = false; r.t0 = now();
+  renderStage();
+}
+function sprintTick() {
+  const r = RUN; if (!r || r.kind !== 'sprint' || r.phase !== 'sprint') return;
+  const left = Math.max(0, SPRINT_MS - (now() - r.started));
+  el.progfill.style.width = (left / SPRINT_MS * 100) + '%';
+  el.pts.textContent = Math.ceil(left / 1000) + ' s';
+  if (left <= 0) { sprintEnd(false); return; }
+  requestAnimationFrame(sprintTick);
+}
+function sprintEnd(all) {
+  const r = RUN; if (!r || r.phase !== 'sprint') return;
+  r.phase = 'end';
+  const ms = Math.min(SPRINT_MS, Math.round(now() - r.started)), prev = sprintRecord(), k = dayKey();
+  S.sprint.push({ d: k, s: r.score, ms, all: !!all });
+  if (S.sprint.length > 500) S.sprint.splice(0, S.sprint.length - 500);
+  const day = today(); day.sp = Math.max(day.sp || 0, r.score); day.ms += ms;
+  const lv0 = levelOf(S.xp), rec = r.score > prev;
+  let xp = r.score * 3; if (rec && prev > 0) xp += 25;
+  S.xp += xp;
+  save();
+  const res = { score: r.score, ms, all, prev, rec, xp, wrong: r.wrong.slice(), levelUp: levelOf(S.xp) > lv0 ? levelOf(S.xp) : 0, goalNow: day.r >= 3 && S.sprint.filter(x => x.d === k).length === 1 };
+  RUN = null; closePlay();
+  renderSprintDone(res); show('done');
+  if (res.rec || res.levelUp || res.goalNow) confetti();
+}
+
+/* ---- după antrenament și după sprint ---- */
+function renderDone(r, lvUp) {
+  const M = MODES[r.mode], st = r.stats, t = S.days[dayKey()] || { r: 0, sp: 0 };
+  const btns = label => '<div class="btnrow"><button class="btn" type="button" data-act="home">Acasă</button><button class="btn primary" type="button" data-act="train" data-mode="' + r.mode + '">' + label + '</button></div>';
+  const lvl = lvUp ? '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + lvUp + ', ' + rankName(lvUp) + '!</p>' : '';
+  if (r.kind === 'place') {
+    const c = famCounts(r.mode);
+    el.done.innerHTML = '<div class="hero"><span class="tag">Harta ta · ' + M.name + '</span><h1>' + (c.known ? 'Știi deja ' + c.known + ' din 36!' : 'Harta ta e gata!') + '</h1>' +
+      '<p class="muted">' + (c.known ? 'Verde = știi. Galben = aproape. Gri = de învățat.' : 'Pornim de la început. E în regulă: de aici încolo doar crește.') + '</p></div>' + lvl +
+      '<section class="card">' + mapHTML(r.mode) + legendHTML() + '</section>' +
+      '<p class="center">' + (c.by[0] ? 'Ai ' + nr(c.by[0], 'calcul gri', 'calcule gri') + '. La antrenament înveți câte 3 pe rundă, cu trucul lor.' : 'Toată harta e colorată. Acum le facem rapide.') + '</p>' + btns('Prima rundă');
+    return;
+  }
+  const pct = st.q ? st.ok / st.q : 0;
+  const title = pct >= 0.9 ? 'Excelent!' : (pct >= 0.7 ? 'Bravo, merge!' : 'Ai muncit bine.');
+  const up = FAM.filter(f => { const b = S.modes[r.mode].f[f.k].l; return b > r.before[f.k] && b >= 2; });
+  let body = '<section class="card"><div class="map-head"><h3>Harta</h3><span class="small muted">' + famCounts(r.mode).known + ' din 36 știute</span></div>' + mapHTML(r.mode, { hl: new Set(up.map(f => f.k)) }) + legendHTML() + '</section>';
+  if (up.length) body += '<p>' + (up.length === 1 ? 'A crescut pe hartă: ' : 'Au crescut pe hartă: ') + up.slice(0, 10).map(f => '<b>' + famLabel(r.mode, f) + '</b>').join(', ') + '.</p>';
+  if (up.some(f => S.modes[r.mode].f[f.k].l === 2)) body += '<p class="small muted">Galbenele devin verzi mâine, dacă le știi din nou. Așa rămân în minte.</p>';
+  const goal = t.r >= 3 ? (t.sp ? 'Ținta de azi e gata. Bravo!' : 'Ai făcut 3 runde azi. Mai e sprintul.') : 'Azi: ' + nr(t.r, 'rundă', 'runde') + ' din 3.';
+  el.done.innerHTML = '<div class="hero"><h1>' + title + '</h1>' + (st.best >= 5 ? '<p class="muted">Cea mai lungă serie: ' + nr(st.best, 'răspuns corect', 'răspunsuri corecte') + ' la rând.</p>' : '') + '</div>' +
+    '<div class="tiles"><div class="tilestat"><b>' + st.ok + '/' + st.q + '</b><span>corecte</span></div><div class="tilestat"><b>' + st.fast + '</b><span>fulgere</span></div><div class="tilestat"><b>+' + st.xp + '</b><span>puncte</span></div></div>' +
+    lvl + body + '<p class="center">' + goal + '</p>' + btns('Încă o rundă');
+}
+function renderSprintDone(res) {
+  const secs = Math.round(res.ms / 1000);
+  el.done.innerHTML = '<div class="hero"><span class="tag">Sprint</span><h1 class="big">' + res.score + '</h1>' +
+    '<p>' + (res.all ? 'corecte din 30. Ai terminat foaia în ' + nr(secs, 'secundă', 'secunde') + '!' : 'calcule corecte într-un minut') + '</p>' +
+    (res.rec ? '<p class="lvlup">' + ICON.bolt + (res.prev ? 'Record nou! Înainte: ' + res.prev + '.' : 'Primul tău record!') + '</p>' : '<p class="muted">Recordul tău: ' + res.prev + '. Ținta: ' + SPRINT_TARGET + '.</p>') + '</div>' +
+    (res.levelUp ? '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + res.levelUp + ', ' + rankName(res.levelUp) + '!</p>' : '') +
+    '<section class="card"><h3>Recordurile mele</h3>' + sprintChart() + '</section>' +
+    (res.wrong.length ? '<section class="card"><h3>De reținut</h3><div class="hardlist">' + res.wrong.map(w => '<span>' + w.t + ' = ' + w.a + '</span>').join('') + '</div></section>' : '') +
+    '<div class="btnrow"><button class="btn" type="button" data-act="home">Acasă</button><button class="btn primary" type="button" data-act="sprint">Încă un sprint</button></div>';
+}
+function sprintChart() {
+  const days = sprintDays().slice(-14);
+  if (!days.length) return '<p class="small muted">Aici apare cel mai bun scor al tău din fiecare zi.</p>';
+  const W = 320, H = 170, L = 24, R = 6, T = 16, Bm = 22, cw = (W - L - R) / 14, y = v => T + (H - T - Bm) * (1 - v / 30), tk = dayKey();
+  let s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Cel mai bun scor la sprint, pe zile">';
+  [0, 10, 20, 30].forEach(v => { s += '<line class="ch-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text class="ch-ax" x="' + (L - 5) + '" y="' + (y(v) + 3.5) + '" text-anchor="end">' + v + '</text>'; });
+  days.forEach((x, i) => {
+    const bw = cw * 0.64, cx = L + i * cw + cw * 0.18, top = y(x.best);
+    s += '<rect class="ch-bar' + (x.d === tk ? ' now' : '') + '" x="' + cx + '" y="' + top + '" width="' + bw + '" height="' + Math.max(0, y(0) - top) + '" rx="2"/>';
+    s += '<text class="ch-v" x="' + (cx + bw / 2) + '" y="' + (top - 3) + '" text-anchor="middle">' + x.best + '</text>';
+    s += '<text class="ch-ax" x="' + (cx + bw / 2) + '" y="' + (H - 7) + '" text-anchor="middle">' + x.d.slice(8).replace(/^0/, '') + '</text>';
+  });
+  s += '<line class="ch-target" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(SPRINT_TARGET) + '" y2="' + y(SPRINT_TARGET) + '"/><text class="ch-tl" x="' + (L + 3) + '" y="' + (y(SPRINT_TARGET) - 4) + '">ținta ' + SPRINT_TARGET + '</text>';
+  return s + '</svg><p class="small muted">Sub fiecare bară e ziua din lună.</p>';
+}
+
+/* ---- progresul ---- */
+function renderProgress(tab) {
+  const tabs = [['lv', 'Niveluri'], ['mul', 'Harta tablei'], ['div', 'Împărțiri'], ['add', '+ și ' + MINUS], ['sprint', 'Sprint'], ['zile', 'Zile']];
+  let body = '';
+  if (MODES[tab]) {
+    const c = famCounts(tab);
+    body = '<section class="card"><div class="map-head"><h3>' + MODES[tab].name + '</h3><span class="small muted">' + c.known + ' din 36 știute · ' + c.fast + ' rapid</span></div>' +
+      (S.modes[tab].placed || c.seen ? '' : '<p class="small muted">Harta se colorează când joci nivelurile sau antrenamentul.</p>') + mapHTML(tab, { tap: true }) + legendHTML() +
+      '<p class="detail small" id="detail">Apasă pe o căsuță ca să vezi cum îți merge la ea.</p></section>' + hardHTML(tab);
+  } else if (tab === 'lv') {
+    body = WORLDS.map(w => { const ws = worldStars(w.id); return '<section class="card"><div class="map-head"><h3>' + w.name + '</h3><span class="small muted">' + ws.passed + ' din ' + ws.n + ' · ' + ws.s + '/' + ws.max + ' stele</span></div>' +
+      w.levels.map((L, i) => '<div class="lvline' + (isUnlocked(w.id, i) ? '' : ' locked') + '"><span>' + (L.boss ? 'Final' : (i + 1) + '.') + ' ' + L.name + '</span>' + starsHTML(lvState(L.id).s) + '</div>').join('') + '</section>'; }).join('');
+    body += S.test.done ? '<section class="card"><h3>Testul de pornire · ' + niceDate(S.test.date) + '</h3></section>' + testResultsHTML() + btn('retest', 'Refă testul de pornire', false) : btn('test', 'Fă testul de pornire', true);
+  } else if (tab === 'sprint') body = '<section class="card"><h3>Recordurile mele</h3>' + sprintChart() + '<p class="small muted">Ținta: ' + SPRINT_TARGET + ' corecte într-un minut, fără degete.</p></section>';
+  else body = daysHTML();
+  el.progress.innerHTML = '<header class="top"><button class="icon-btn" type="button" data-act="home" aria-label="Înapoi">' + ICON.back + '</button><h1 class="h-page">Progresul meu</h1><span style="width:44px"></span></header>' +
+    '<nav class="tabs" role="tablist">' + tabs.map(x => '<button class="tab" type="button" role="tab" aria-selected="' + (x[0] === tab) + '" data-act="tab" data-tab="' + x[0] + '">' + x[1] + '</button>').join('') + '</nav>' + body +
+    '<div class="btnrow"><button class="btn" type="button" data-act="report">Trimite raportul</button><button class="btn" type="button" data-act="reset">Șterge progresul</button></div><div id="resetbox"></div>';
+}
+function hardHTML(mode) {
+  const h = hardest(mode, 12); if (!h.length) return '';
+  return '<section class="card"><h3>De lucrat acum</h3><div class="hardlist">' + h.map(f => '<span class="h' + S.modes[mode].f[f.k].l + '">' + famLabel(mode, f) + '</span>').join('') + '</div></section>';
+}
+function showCell(mode, k) {
+  const f = FAMK[k], s = S.modes[mode].f[k], det = $('#detail'); if (!det) return;
+  const avg = s.tn ? (s.t / s.tn / 1000).toFixed(1).replace('.', ',') + ' s' : '–';
+  det.innerHTML = '<b>' + famFull(mode, f) + '</b> · ' + STATUS[s.l] + '<br>' + (s.n ? nr(s.n, 'încercare', 'încercări') + ', ' + s.ok + ' corecte · timp mediu ' + avg : 'încă neîntrebat');
+}
+function daysHTML() {
+  const st = streak(), keys = Object.keys(S.days), played = keys.filter(k => S.days[k].q > 0 || S.days[k].sp > 0).length;
+  const mins = Math.round(keys.reduce((a, k) => a + (S.days[k].ms || 0), 0) / 60000), d0 = dayIdx(), arr = [];
+  for (let i = 13; i >= 0; i--) { const k = idxToKey(d0 - i), x = S.days[k]; arr.push({ k, m: x ? Math.round((x.ms || 0) / 60000) : 0 }); }
+  const mx = Math.max(10, ...arr.map(x => x.m)), W = 320, H = 130, L = 8, T = 14, Bm = 20, cw = (W - 2 * L) / 14;
+  let s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Minute de joc în ultimele 14 zile"><line class="ch-grid" x1="' + L + '" x2="' + (W - L) + '" y1="' + (H - Bm) + '" y2="' + (H - Bm) + '"/>';
+  arr.forEach((x, i) => {
+    const bw = cw * 0.62, cx = L + i * cw + cw * 0.19, h = (H - T - Bm) * x.m / mx, top = H - Bm - h;
+    if (x.m) s += '<rect class="ch-bar' + (i === 13 ? ' now' : '') + '" x="' + cx + '" y="' + top + '" width="' + bw + '" height="' + h + '" rx="2"/><text class="ch-v" x="' + (cx + bw / 2) + '" y="' + (top - 3) + '" text-anchor="middle">' + x.m + '</text>';
+    s += '<text class="ch-ax" x="' + (cx + bw / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + x.k.slice(8).replace(/^0/, '') + '</text>';
+  });
+  s += '</svg>';
+  return '<div class="tiles"><div class="tilestat"><b>' + st.n + '</b><span>la rând</span></div><div class="tilestat"><b>' + played + '</b><span>zile jucate</span></div><div class="tilestat"><b>' + mins + '</b><span>minute</span></div></div>' +
+    '<section class="card"><h3>Ultimele 14 zile</h3>' + s + '<p class="small muted">Minute de joc pe zi. Sub fiecare bară e ziua din lună.</p></section>';
+}
+
+/* ---- raport ---- */
+function renderReport() {
+  const txt = reportText();
+  el.report.innerHTML = '<header class="top"><button class="icon-btn" type="button" data-act="home" aria-label="Înapoi">' + ICON.back + '</button><h1 class="h-page">Raportul</h1><span style="width:44px"></span></header>' +
+    '<p>Trimite raportul profesorului: apasă „Copiază”, apoi lipește textul în WhatsApp.</p>' +
+    '<pre class="rep" id="reptxt">' + esc(txt) + '</pre>' +
+    '<div class="btnrow"><button class="btn primary" type="button" data-act="copy">Copiază</button><a class="btn" href="https://wa.me/?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener">Deschide WhatsApp</a></div>' +
+    '<p class="small muted" id="copymsg" aria-live="polite"></p>';
+}
+function copyReport() {
+  const txt = reportText(), msg = $('#copymsg');
+  const fallback = () => { const pre = $('#reptxt'); const rg = document.createRange(); rg.selectNodeContents(pre); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(rg); msg.textContent = 'Textul e selectat. Copiază-l din meniul telefonului.'; };
+  try { navigator.clipboard.writeText(txt).then(() => { msg.textContent = 'Copiat! Acum lipește-l în WhatsApp.'; }, fallback); } catch (e) { fallback(); }
+}
+function askReset() {
+  const box = $('#resetbox');
+  box.innerHTML = '<div class="card warnbox"><p><b>Sigur?</b> Se șterg nivelurile, harta, recordurile și punctele de pe acest telefon.</p><div class="btnrow"><button class="btn" type="button" data-act="reset-no">Nu</button><button class="btn danger" type="button" data-act="reset-yes">Da, șterge tot</button></div></div>';
+  box.scrollIntoView({ block: 'nearest' });
+}
+
+/* ---- evenimente ---- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  audioUnlock();
+  const d = b.dataset;
+  switch (d.act) {
+    case 'world': renderWorld(d.w || curWorld); show('world'); break;
+    case 'level': startLevel(d.w, +d.l); break;
+    case 'locked': toast('Se deschide cu 2 stele la nivelul ' + d.l + '.'); break;
+    case 'train': startTrain(d.mode); break;
+    case 'sprint': startSprint(); break;
+    case 'test': startTest(); break;
+    case 'retest': S.test = Object.assign({}, S.test, { done: false, partial: null }); save(); startTest(); break;
+    case 'home': renderHome(); show('home'); break;
+    case 'quit': quit(); break;
+    case 'progress': renderProgress('lv'); show('progress'); break;
+    case 'tab': renderProgress(d.tab); break;
+    case 'cell': showCell(d.mode, d.k); break;
+    case 'report': renderReport(); show('report'); break;
+    case 'copy': copyReport(); break;
+    case 'sound': soundOn = !soundOn; setPref('sound', soundOn ? '1' : '0'); if (soundOn) { audioUnlock(); SFX.ok(); } renderHome(); break;
+    case 'admin-off': setPref('admin', '0'); ADMIN = false; renderHome(); if (!el.world.hidden) renderWorld(curWorld); toast('Ai ieșit din modul profesor.'); break;
+    case 'begin': if (RUN && RUN.phase === 'intro') next(); break;
+    case 'go': sprintCountdown(); break;
+    case 'hint': showHint(); break;
+    case 'skip': submit('skip'); break;
+    case 'lbegin': levelBegin(d.demo === '1'); break;
+    case 'lnext': demoStep(); break;
+    case 'lcont': if (RUN && RUN.kind === 'level') levelNext(); break;
+    case 'lskipdemo': skipDemos(); break;
+    case 'ltruc': soloTruc(); break;
+    case 'lskip': if (RUN && RUN.kind === 'level' && RUN.phase === 'solo') levelSubmit('skip'); break;
+    case 'choice': levelChoice(+d.i); break;
+    case 'vpick': vecPick(+d.i); break;
+    case 'tbegin': testBegin(); break;
+    case 'tskip': testSubmit('skip'); break;
+    case 'reset': askReset(); break;
+    case 'reset-no': $('#resetbox').innerHTML = ''; break;
+    case 'reset-yes': S = blankState(); save(); renderHome(); show('home'); toast('Progresul a fost șters.'); break;
+  }
+});
+function handleKey(k) {
+  const r = RUN; if (!r || r.locked) return;
+  if (r.phase === 'vec') vecKey(k);
+  else if (r.kind === 'level') { if (r.phase === 'fill') fillKey(k); else if (r.phase === 'solo' || r.phase === 'fix') soloKey(k); }
+  else if (r.kind === 'test') testKey(k);
+  else trainKey(k);
+  okReady();
+}
+el.keys.addEventListener('click', e => { const b = e.target.closest('button[data-k]'); if (!b) return; audioUnlock(); handleKey(b.dataset.k); });
+document.addEventListener('keydown', e => {
+  if (el.play.hidden || !RUN || e.metaKey || e.ctrlKey || e.altKey) return;
+  const tg = e.target && e.target.tagName; if (tg === 'INPUT' || tg === 'TEXTAREA') { if (e.key === 'Enter') { e.preventDefault(); const bt = el.actions.querySelector('.btn.primary'); if (bt) bt.click(); } return; }
+  const k = e.key;
+  if (!el.choices.hidden) {
+    const f = RUN.fill, sl = f && f.active >= 0 ? RUN.entry.it.slots[f.active] : null;
+    if (sl) { const i = k === '+' ? sl.opts.indexOf('+') : (k === '-' ? sl.opts.indexOf(MINUS) : (k === '1' ? 0 : (k === '2' ? 1 : -1))); if (i >= 0) { levelChoice(i); e.preventDefault(); } }
+    return;
+  }
+  if (!el.actions.hidden) { if (k === 'Enter' || k === ' ') { const bt = el.actions.querySelector('.btn.primary'); if (bt) { bt.click(); e.preventDefault(); } } else if (k === 'Escape') quit(); return; }
+  if (/^[0-9]$/.test(k)) { handleKey(k); e.preventDefault(); }
+  else if (k === 'Backspace') { handleKey('back'); e.preventDefault(); }
+  else if (k === '-' || k === 'Subtract') { handleKey('minus'); e.preventDefault(); }
+  else if (k === 'Enter') { e.preventDefault(); if (RUN.phase === 'intro') { const bt = el.stage.querySelector('[data-act="begin"],[data-act="go"]'); if (bt) bt.click(); } else handleKey('ok'); }
+  else if (k === 'Escape') quit();
+});
+window.addEventListener('hashchange', () => { checkAdmin(); renderHome(); });
+
+/* ---- pornire: acasă imediat; dacă pagina s-a actualizat în timpul unui joc, jocul continuă ---- */
+checkAdmin();
+renderHome(); show('home');
+const HOT = window.claude && window.claude.hot;
+try { if (HOT && HOT.snapshot) HOT.snapshot(() => ({ run: RUN && RUN.kind !== 'sprint' ? RUN : null })); } catch (e) { /* fără actualizare din mers */ }
+function resume(data) {
+  if (!data || !data.run || RUN) return;
+  const r = data.run; if (r.phase === 'gone') return;
+  if (r.kind === 'level') { if (!WORLDK[r.wid] || (r.plan && r.i >= 0 && !r.plan[r.i])) return; if (r.plan && r.i >= 0) r.entry = r.plan[r.i]; }
+  else if (r.kind !== 'test' && !r.q && r.phase !== 'intro') return;
+  RUN = r; RUN.locked = false; RUN.t0 = now();
+  if (r.phase === 'vec' && (!r.vec || r.vec.done)) {   // ajutorul era gata: trece la următorul calcul
+    r.vec = null; el.play.hidden = false; document.body.classList.add('playing'); updateCombo();
+    if (r.kind === 'level') levelNext(); else next();
+    return;
+  }
+  openPlay();
+}
+try { if (HOT && HOT.ready) HOT.ready(resume); else if (HOT && HOT.data) resume(HOT.data); } catch (e) { /* nimic */ }
+})();
+</script>
+
