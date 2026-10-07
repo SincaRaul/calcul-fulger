@@ -210,9 +210,13 @@ button.cell:active{transform:scale(.94)}
 .ask{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%}
 .tag{align-self:center;font-size:13px;font-weight:600;padding:4px 11px;border-radius:999px;background:var(--pen-soft);color:var(--pen);text-align:center}
 .tag.new{background:var(--bolt-soft);color:var(--bolt-ink)}
-.q{font-family:var(--f-display);font-weight:800;font-size:clamp(46px,15vw,88px);line-height:1;display:flex;align-items:center;justify-content:center;
+.play .tag{font-size:15px}
+.q{font-family:var(--f-display);font-weight:800;font-size:clamp(58px,19vw,104px);line-height:1;display:flex;align-items:center;justify-content:center;
   gap:.2em;flex-wrap:wrap;letter-spacing:-.02em;font-variant-numeric:tabular-nums;text-align:center}
-.q.long{font-size:clamp(36px,11vw,70px)}
+.q.long{font-size:clamp(42px,13.5vw,80px)}
+/* calculele foarte lungi (−10 − (−10)): o treapta mai mica, ca sa ramana pe un rand */
+.q.xlong{font-size:clamp(34px,10.5vw,64px)}
+.q.xxlong{font-size:clamp(28px,8.5vw,52px)}
 .q.sm{font-size:clamp(30px,9vw,46px)}
 .eqs{color:var(--muted)}
 .box{min-width:1.7em;height:1.22em;padding:0 .14em;border-radius:.16em;border:3px solid var(--ink);background:var(--card);
@@ -223,7 +227,7 @@ button.cell:active{transform:scale(.94)}
 .box.bad{border-color:var(--warn);color:var(--warn)}
 .shake{animation:shake .38s}
 .pop{animation:pop .45s ease}
-.fb{min-height:26px;text-align:center;font-weight:600;font-size:17px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.fb{min-height:26px;text-align:center;font-weight:600;font-size:19px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
 .fb .ic{width:16px;height:19px}
 .fb.ok{color:var(--good)} .fb.fast{color:var(--bolt-ink)} .fb.info{color:var(--muted);font-weight:500}
 .qbtns{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
@@ -236,10 +240,10 @@ button.cell:active{transform:scale(.94)}
 
 /* pașii cu căsuțe */
 .lvl{display:flex;flex-direction:column;gap:12px;width:100%}
-.qhead{font-family:var(--f-display);font-weight:800;font-size:clamp(34px,10vw,54px);line-height:1;display:flex;align-items:center;justify-content:center;
+.qhead{font-family:var(--f-display);font-weight:800;font-size:clamp(40px,12.5vw,64px);line-height:1;display:flex;align-items:center;justify-content:center;
   gap:.2em;flex-wrap:wrap;font-variant-numeric:tabular-nums;text-align:center}
 .steps{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;display:flex;flex-direction:column}
-.row{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(20px,5.6vw,27px);line-height:2.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.row{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(22px,6.4vw,30px);line-height:2.2;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .slot{display:inline-flex;align-items:center;justify-content:center;min-width:1.9em;height:1.5em;padding:0 .22em;margin:0 .06em;border-radius:.3em;
   border:2.5px dashed var(--muted);background:var(--paper);color:var(--pen);vertical-align:middle;line-height:1;font-weight:800}
 .slot.active{border:2.5px solid var(--pen);background:var(--card);box-shadow:0 0 0 4px var(--pen-soft)}
@@ -249,7 +253,7 @@ button.cell:active{transform:scale(.94)}
 .slot.shown{border:2.5px solid var(--pen);background:var(--pen-soft);color:var(--pen)}
 .slot.helped{border:2.5px solid var(--warn);background:var(--card);color:var(--warn)}
 .mir.wait{color:var(--muted)}
-.ask2{text-align:center;font-size:15px;color:var(--muted);min-height:22px}
+.ask2{text-align:center;font-size:17px;color:var(--muted);min-height:22px}
 .helpbox{background:var(--bolt-soft);color:var(--ink);border-radius:12px;padding:8px 12px;font-size:15px;text-align:left}
 .whys{display:flex;flex-direction:column;gap:6px;font-size:16px}
 .whys p{color:var(--muted)}
@@ -1330,6 +1334,7 @@ const starIc = on => '<svg class="ic ' + (on ? 'st-on' : 'st-off') + '" viewBox=
 const starsHTML = n => '<span class="stars" role="img" aria-label="' + nr(n, 'stea', 'stele') + ' din 3">' + [0, 1, 2].map(i => starIc(i < n)).join('') + '</span>';
 const btn = (act, label, primary, extra) => '<button class="btn' + (primary ? ' primary' : '') + '" type="button" data-act="' + act + '" ' + (extra || '') + '>' + label + '</button>';
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const qLen = t => (t.length > 9 ? ' xlong' : (t.length > 7 ? ' long' : ''));
 
 let RUN = null;
 let soundOn = getPref('sound', '1') === '1';
@@ -1634,7 +1639,15 @@ function updateCombo() {
   el.combo.hidden = false; el.combo.innerHTML = ICON.flame + '×' + c;
   el.combo.classList.remove('bump'); void el.combo.offsetWidth; el.combo.classList.add('bump');
 }
-function updateBox() { const bx = $('#box'); if (!bx || !RUN) return; bx.textContent = RUN.input; bx.classList.toggle('empty', !RUN.input); }
+function updateBox() { const bx = $('#box'); if (!bx || !RUN) return; bx.textContent = RUN.input; bx.classList.toggle('empty', !RUN.input); fitQ(); }
+const Q_STEPS = ['', 'long', 'xlong', 'xxlong'];
+function fitQ() {
+  const q = el.stage.querySelector('.q:not(.sm)'); if (!q) return;
+  let i = Q_STEPS.findIndex((c, k) => k && q.classList.contains(c)); if (i < 0) i = 0;
+  while (i < Q_STEPS.length - 1 && q.getBoundingClientRect().height > parseFloat(getComputedStyle(q).fontSize) * 1.5) {
+    if (i) q.classList.remove(Q_STEPS[i]); i++; q.classList.add(Q_STEPS[i]);
+  }
+}
 function setFb(html, cls) { const fb = $('#fb'); if (fb) { fb.className = 'fb ' + (cls || ''); fb.innerHTML = html; } }
 function shakeBox(cls) { const bx = $('#box'); if (!bx) return; bx.classList.remove('shake'); void bx.offsetWidth; bx.classList.add('shake'); if (cls) bx.classList.add(cls); }
 // Un minus singur conteaza ca nimic scris (testul cu agenti, 2026-10-07).
@@ -1816,7 +1829,7 @@ function fillDone() {
 function soloHTML(r, it, L) {
   const counted = r.plan.filter(e => e.mode === 'solo' && !e.extra), pos = counted.indexOf(r.plan[r.i]) + 1;
   const tag = r.entry.extra ? 'Încă o dată' : (L.boss ? 'Nivelul final · ' : 'Singur · ') + pos + ' din ' + counted.length;
-  return '<div class="ask"><span class="tag">' + tag + '</span><div class="q' + (it.q.length > 7 ? ' long' : '') + '"><span class="qt">' + it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div>' +
+  return '<div class="ask"><span class="tag">' + tag + '</span><div class="q' + qLen(it.q) + '"><span class="qt">' + it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div>' +
     '<div class="fb" id="fb"></div><div class="qbtns"><button class="pill" type="button" data-act="ltruc">' + ICON.bulb + 'Truc</button><button class="pill" type="button" data-act="lskip">Nu știu</button></div></div>';
 }
 function lfixHTML(r, it) {
@@ -2043,7 +2056,7 @@ function renderTest() {
   }
   const t = r.list[r.at], w = WORLDK[t.wid];
   el.keys.classList.toggle('nominus', t.wid !== 'neg');
-  el.stage.innerHTML = '<div class="ask"><span class="tag">Test · ' + w.name + '</span><div class="q' + (r.it.q.length > 7 ? ' long' : '') + '"><span class="qt">' + r.it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div><div class="fb" id="fb"></div><div class="qbtns"><button class="pill" type="button" data-act="tskip">Nu știu</button></div></div>';
+  el.stage.innerHTML = '<div class="ask"><span class="tag">Test · ' + w.name + '</span><div class="q' + qLen(r.it.q) + '"><span class="qt">' + r.it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div><div class="fb" id="fb"></div><div class="qbtns"><button class="pill" type="button" data-act="tskip">Nu știu</button></div></div>';
   setDock('keys'); updateBox();
 }
 function testBegin() {
@@ -2163,7 +2176,7 @@ function renderStage() {
     : ph === 'sprint' ? '<button class="pill" type="button" data-act="skip">Sari</button>'
     : '<button class="pill" type="button" data-act="hint">' + ICON.bulb + 'Truc</button><button class="pill" type="button" data-act="skip">Nu știu</button>';
   el.stage.innerHTML = '<div class="ask">' + tag +
-    '<div class="q' + (q.text.length > 7 ? ' long' : '') + '" id="qq"><span class="qt">' + q.text + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div>' +
+    '<div class="q' + qLen(q.text) + '" id="qq"><span class="qt">' + q.text + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div>' +
     '<div class="fb" id="fb"></div><div class="qbtns">' + btns + '</div><div class="hint card" id="hint" hidden></div></div>';
   updateBox();
 }
