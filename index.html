@@ -1310,6 +1310,18 @@ function zeroHop(svgHost) {
 }
 // Ou de Paste: daca scuturi telefonul pe ecranul de acasa, lui Zero i se face rau (si telefonul vibreaza).
 let zShake = [], zLast = null, zDizzyUntil = 0, zMotionAsked = false;
+const zDbg = { on: false, ev: 0, max: 0, hits: 0, kind: '-', taps: [] };
+function zDbgShow() {
+  const b = $('#zdbg'); if (!b) return;
+  b.textContent = 'Senzor: ' + (typeof DeviceMotionEvent === 'undefined' ? 'NU EXISTĂ' : (DeviceMotionEvent.requestPermission ? 'cere voie' : 'da')) +
+    ' · citiri: ' + zDbg.ev + ' · tip: ' + zDbg.kind + ' · forța maximă: ' + zDbg.max.toFixed(1) + ' (prag 11) · scuturături: ' + zDbg.hits + ' · pagină sigură: ' + (window.isSecureContext ? 'da' : 'NU');
+}
+// A doua cale, care merge pe orice telefon: 8 atingeri rapide pe Zero il ametesc.
+function zeroTapDizzy() {
+  const t = Date.now(); zDbg.taps = zDbg.taps.filter(x => t - x < 2500); zDbg.taps.push(t);
+  if (zDbg.taps.length >= 8) { zDbg.taps = []; zDizzyUntil = 0; zeroDizzy(); return true; }
+  return false;
+}
 function zeroAskMotion() {   // iPhone cere voie pentru miscare; intreaba la prima atingere a lui Zero
   if (zMotionAsked) return; zMotionAsked = true;
   try { if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) DeviceMotionEvent.requestPermission().catch(() => {}); } catch (e) { /* nimic */ }
@@ -1319,10 +1331,13 @@ function zeroMotion(e) {
   let f = null;
   if (a0 && a0.x !== null) f = Math.hypot(a0.x, a0.y, a0.z);                       // fara gravitatie
   else if (g && g.x !== null) f = Math.abs(Math.hypot(g.x, g.y, g.z) - 9.81);     // cu gravitatie
+  zDbg.ev++; zDbg.kind = a0 && a0.x !== null ? 'fără gravitație' : (g && g.x !== null ? 'cu gravitație' : 'gol');
+  if (f !== null && f > zDbg.max) zDbg.max = f;
+  if (zDbg.on && zDbg.ev % 10 === 0) zDbgShow();
   if (f === null) return;
   const t = Date.now();
   if (f > 11 && (!zLast || t - zLast > 140)) {
-    zLast = t; zShake = zShake.filter(x => t - x < 1500); zShake.push(t);
+    zLast = t; zDbg.hits++; zShake = zShake.filter(x => t - x < 1500); zShake.push(t);
     if (zShake.length >= 4) { zShake = []; zeroDizzy(); }
   }
 }
@@ -1557,6 +1572,7 @@ function zeroHomeHTML(st) {
 function zeroWake(b) {
   if (!b) return;
   zeroAskMotion();
+  if (zeroTapDizzy()) return;
   if (!b.classList.contains('is-asleep')) {   // treaz: sare si spune altceva
     const p = $('#zsay'); zeroHop(b);
     if (p) { p.className = 'zsay'; p.innerHTML = ZERO_ZICE[zeroZ++ % ZERO_ZICE.length]; p.style.animation = 'none'; void p.offsetWidth; p.style.animation = ''; }
@@ -1581,7 +1597,7 @@ function renderHome() {
     ? '<button class="cta test" type="button" data-act="test"><span class="t">' + (S.test.partial ? 'Continuă testul de pornire' : 'Începe cu testul de pornire') + '</span><span class="s">Cam 10 minute. Afli ce știi deja și de unde începi.</span></button>'
     : '';
   el.home.innerHTML =
-    '<header class="top"><div class="brand">' + ICON.bolt + '<span>Calcul</span><span class="w2">Fulger</span></div>' +
+    '<header class="top"><div class="brand" data-act="zdbg">' + ICON.bolt + '<span>Calcul</span><span class="w2">Fulger</span></div>' +
     '<button class="icon-btn" type="button" data-act="sound" aria-label="' + (soundOn ? 'Oprește sunetul' : 'Pornește sunetul') + '">' + (soundOn ? ICON.sndOn : ICON.sndOff) + '</button></header>' +
     adminBar() + zeroHomeHTML(st) +
     (storageOK ? '' : '<div class="card warnbox"><b>Atenție:</b> browserul ăsta nu păstrează progresul. Deschide linkul în Chrome sau Safari, nu într-o fereastră privată.</div>') +
@@ -2516,6 +2532,8 @@ document.addEventListener('click', e => {
     case 'retest': S.test = Object.assign({}, S.test, { done: false, partial: null }); save(); startTest(); break;
     case 'home': renderHome(); show('home'); break;
     case 'zwake': zeroWake(b); break;
+    case 'zdbg': { const t = Date.now(); zDbg.bt = (zDbg.bt || []).filter(x => t - x < 2000); zDbg.bt.push(t);
+      if (zDbg.bt.length >= 5) { zDbg.bt = []; zDbg.on = true; zeroAskMotion(); if (!$('#zdbg')) el.home.insertAdjacentHTML('afterbegin', '<p class="card small" id="zdbg"></p>'); zDbgShow(); } break; }
     case 'zhop': zeroHop(b); break;
     case 'quit': quit(); break;
     case 'progress': renderProgress('lv'); show('progress'); break;
