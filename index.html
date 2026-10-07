@@ -484,6 +484,13 @@ input.name{font:inherit;font-size:18px;padding:12px 14px;border-radius:12px;bord
 @keyframes mz-spin{0%{transform:none}60%{transform:translateY(-30px) rotate(330deg)}100%{transform:rotate(360deg)}}
 @keyframes mz-dance{0%,100%{transform:none}20%{transform:rotate(-10deg) translateY(-8px)}40%{transform:rotate(10deg)}60%{transform:rotate(-10deg) translateY(-8px)}80%{transform:rotate(8deg)}}
 @keyframes mz-squash{0%,100%{transform:none}30%{transform:scale(1.16,.8)}60%{transform:scale(.9,1.12) translateY(-24px)}}
+.mz-talk{transform-box:fill-box;transform-origin:center;animation:mz-talk .22s ease-in-out 8 alternate}
+@keyframes mz-talk{from{transform:scaleY(1)}to{transform:scaleY(.25)}}
+/* exemplele: Zero explica fiecare pas, in balonul lui */
+.zteach{display:flex;align-items:flex-end;gap:8px}
+.zteach .zmini{width:62px}
+.zteach .zsay{font:600 16px/1.35 var(--f-body);padding:9px 13px}
+.zteach .zsay:before{top:auto;bottom:14px;margin-top:0}
 @keyframes mz-wink{0%,100%{transform:scaleY(1)}25%,70%{transform:scaleY(.08)}}
 .zwink .mz-eyes .mz-eye-pop:last-child .mz-blink{animation:mz-wink .8s}
 /* Zero raspunde cand il atingi: sare o data (animatia pusa din JS, ca sa porneasca la fiecare atingere) */
@@ -1229,7 +1236,7 @@ const MZ_ARMS = {
   down: { L: 'M62 262 Q22 300 34 352', gl: [34, 356], R: 'M466 262 Q506 300 494 352', gr: [494, 356], wave: false },
   point: { L: 'M62 262 Q22 300 34 352', gl: [34, 356], R: 'M466 250 Q520 246 566 236', gr: [572, 234], wave: false },
 };
-const MZ_ARM_OF = { cheer: 'up', wow: 'up', hmm: 'chin', idle: 'down', dizzy: 'down', point: 'point' };
+const MZ_ARM_OF = { cheer: 'up', wow: 'up', hmm: 'chin', idle: 'down', dizzy: 'down', point: 'point', talk: 'point' };
 const MZ_LEGS = 'M232 424 L226 516 M296 424 L302 516', MZ_SHOES = [[208, 528], [320, 528]], MZ_EYES = [[206, 176], [322, 176]];
 const MZ_ZZZ = [[420, 34, 38], [452, -4, 48], [488, -44, 58]];
 const MZ_CONF = [[-10,40,'#E4574B',20],[70,-6,'#D4C2A5',-30],[180,-22,'#4BA3E4',15],[350,-24,'#5BC08A',-20],[450,-4,'#E4574B',35],[540,50,'#4BA3E4',-15],[-24,150,'#5BC08A',40],[552,160,'#D4C2A5',10]];
@@ -1249,6 +1256,7 @@ function zeroSvg(mood) {
   const mouth = cheer
     ? '<path class="mz-mouth" d="M238 244 Q264 284 290 244 Z"/>'
     : wow ? '<ellipse class="mz-mouth" cx="264" cy="258" rx="9" ry="12"/>'
+    : mood === 'talk' ? '<ellipse class="mz-mouth mz-talk" cx="264" cy="254" rx="13" ry="10"/>'
     : dizzy ? '<path class="mz-gs" stroke-width="5" d="M238 258 Q245 250 251 258 Q258 266 264 258 Q271 250 277 258 Q284 266 290 258"/>'
     : (hmm ? '<path class="mz-gs" stroke-width="6" d="M248 256 Q256 248 264 256 Q272 264 280 256"/>' : '<path class="mz-gs" stroke-width="6" d="M246 248 Q264 264 282 248"/>');
   const conf = cheer || wow ? '<g class="mz-float">' + MZ_CONF.map(([x, y, c, r]) => '<rect x="' + x + '" y="' + y + '" width="16" height="9" rx="2" fill="' + c + '" transform="rotate(' + r + ' ' + (x + 8) + ' ' + (y + 4) + ')"/>').join('') + '</g>' : '';
@@ -1307,12 +1315,16 @@ function zeroAskMotion() {   // iPhone cere voie pentru miscare; intreaba la pri
   try { if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) DeviceMotionEvent.requestPermission().catch(() => {}); } catch (e) { /* nimic */ }
 }
 function zeroMotion(e) {
-  const a = e.accelerationIncludingGravity; if (!a || a.x === null) return;
-  if (zLast) {
-    const d = Math.abs(a.x - zLast.x) + Math.abs(a.y - zLast.y) + Math.abs(a.z - zLast.z), t = Date.now();
-    if (d > 28) { zShake = zShake.filter(x => t - x < 1000); zShake.push(t); if (zShake.length >= 4) { zShake = []; zeroDizzy(); } }
+  const g = e.accelerationIncludingGravity, a0 = e.acceleration;
+  let f = null;
+  if (a0 && a0.x !== null) f = Math.hypot(a0.x, a0.y, a0.z);                       // fara gravitatie
+  else if (g && g.x !== null) f = Math.abs(Math.hypot(g.x, g.y, g.z) - 9.81);     // cu gravitatie
+  if (f === null) return;
+  const t = Date.now();
+  if (f > 11 && (!zLast || t - zLast > 140)) {
+    zLast = t; zShake = zShake.filter(x => t - x < 1500); zShake.push(t);
+    if (zShake.length >= 4) { zShake = []; zeroDizzy(); }
   }
-  zLast = { x: a.x, y: a.y, z: a.z };
 }
 function zeroDizzy() {
   if (RUN || el.home.hidden || Date.now() < zDizzyUntil) return;
@@ -1771,10 +1783,12 @@ function introButtons(L) {
 function demoHTML(r, it) {
   const n = it.slots.length, sh = r.demo, done = sh >= n, di = r.plan.slice(0, r.i + 1).filter(e => e.mode === 'demo').length;
   const vals = it.slots.map((s, i) => (i < sh ? s.v : null)), st = it.slots.map((s, i) => (i < sh ? 'shown' : 'blank'));
-  const whys = it.slots.slice(0, sh).map((s, i) => '<p' + (i === sh - 1 ? ' class="now"' : '') + '>' + esc(s.why) + '</p>').join('');
+  const before = it.slots.slice(0, Math.max(0, sh - 1)).map(s => '<p>' + esc(s.why) + '</p>').join('');
+  const now = sh ? esc(it.slots[sh - 1].why) : (di === 1 ? 'Hai să-ți arăt trucul. Apasă „Mai departe”.' : 'Încă un exemplu. Apasă „Mai departe”.');
+  const fin = done ? '<br><b>' + esc(it.q) + ' = ' + fmt(it.ans) + '</b>' : '';
   return '<div class="lvl"><span class="tag new">Exemplul ' + di + ' din 2 · urmărește</span>' + qhead(it, done) + rowsHTML(it, { vals, st, just: sh - 1 }) +
     (it.vis ? '<div class="visrow">' + visSVG(it.vis, done) + '</div>' : '') +
-    '<div class="whys">' + (whys || '<p class="now">Apasă „Mai departe” și vezi primul pas.</p>') + '</div></div>';
+    '<div class="whys">' + before + '</div><div class="zteach">' + zeroMini('talk') + '<p class="zsay">' + now + fin + '</p></div></div>';
 }
 function demoButtons(r, it) {
   const done = r.demo >= it.slots.length, nextDemo = r.plan[r.i + 1] && r.plan[r.i + 1].mode === 'demo';
