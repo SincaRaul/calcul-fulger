@@ -136,12 +136,45 @@ const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.W
 // ---- 4. deblocarea și de unde continuă ----
 {
   const s = CF.blankState(); CF.setS(s);
+  s.lv.addB = { s: 2, p: 1, b: 16, bf: 12, g: 1 };   // adunările trecute: tabla e deschisă
   ok(CF.isUnlocked('mul', 0) && !CF.isUnlocked('mul', 1), 'la început e deschis doar nivelul 1');
   s.lv.mul2 = { s: 2, p: 1, b: 6 }; ok(CF.isUnlocked('mul', 1) && CF.nextLevel('mul') === 1, 'cu 2 stele se deschide nivelul 2');
   s.lv.mul4 = { s: 1, p: 1, b: 4 }; ok(!CF.isUnlocked('mul', 2) && CF.nextLevel('mul') === 1, 'cu 1 stea nu se deschide nivelul următor');
   s.lv.mul8 = { s: 2, p: 0, b: 0, t: 1 }; ok(CF.isUnlocked('mul', 2) && CF.nextLevel('mul') === 1, 'un nivel știut la test e deschis, dar continuă de la primul neterminat');
   CF.setAdmin(true); ok(CF.isUnlocked('mul', 8) && CF.isUnlocked('neg', 6), 'modul profesor deschide tot'); CF.setAdmin(false);
   ok(CF.worldStars('mul').s === 5 && CF.worldStars('mul').passed === 2, 'stelele lumii');
+}
+
+// ---- 4b. lumile se deschid după harta de dependențe (2026-10-14) ----
+{
+  const s = CF.blankState(); CF.setS(s);
+  ok(CF.WORLDS.map(w => w.id).join(',') === 'add,mul,big,div,neg', 'ordinea lumilor: ' + CF.WORLDS.map(w => w.id).join(','));
+  ok(CF.worldOpen('add') && ['mul', 'big', 'div', 'neg'].every(w => !CF.worldOpen(w)), 'la început e deschisă doar lumea adunărilor');
+  ok(!CF.isUnlocked('mul', 0) && CF.nextLevel('mul') === -1, 'o lume închisă nu are niveluri deschise');
+  const addB = CF.WORLDK.add.levels[CF.WORLDK.add.levels.length - 1];
+  let r = CF.recordLevel(addB, 18, 11);
+  ok(r.stars === 2 && !CF.worldPassed('add') && !CF.worldOpen('mul') && !r.newWorlds.length, '18 corecte, dar 11 rapide: tabla rămâne închisă');
+  ['add10', 'addUp', 'addDown'].forEach(id => { s.lv[id] = { s: 3, p: 1, b: 8 }; });
+  ok(CF.nextLevel('add') === 3, 'cât timp tabla e închisă, propune nivelul final al adunărilor');
+  r = CF.recordLevel(addB, 16, 12);
+  ok(CF.worldPassed('add') && CF.worldOpen('mul') && CF.worldOpen('big') && !CF.worldOpen('div') && r.newWorlds.map(w => w.id).join(',') === 'mul,big', '16 corecte și 12 rapide deschid tabla și numerele mari');
+  ok(s.lv[addB.id].b === 18 && s.lv[addB.id].bf === 12 && s.lv[addB.id].s === 2, 'ține minte cele mai bune rezultate');
+  const mulB = CF.WORLDK.mul.levels[CF.WORLDK.mul.levels.length - 1];
+  CF.recordLevel(mulB, 20, 20);
+  ok(CF.worldOpen('div') && !CF.worldOpen('neg'), 'împărțirile după tablă; negativele cer și numerele mari');
+  const bigB = CF.WORLDK.big.levels[CF.WORLDK.big.levels.length - 1], divB = CF.WORLDK.div.levels[CF.WORLDK.div.levels.length - 1];
+  CF.recordLevel(bigB, 17, 13); ok(!CF.worldOpen('neg'), 'negativele cer și împărțirile');
+  CF.recordLevel(divB, 19, 15); ok(CF.worldOpen('neg'), 'negativele se deschid la final');
+  // o lume în care a jucat deja rămâne deschisă (progresul vechi nu se pierde)
+  const s2 = CF.blankState(); CF.setS(s2); s2.lv.mul2 = { s: 2, p: 3, b: 7 };
+  ok(CF.worldOpen('mul') && CF.isUnlocked('mul', 1) && !CF.worldOpen('div'), 'progresul vechi la tablă rămâne deschis');
+  // jurnalul: fiecare răspuns cu secundele lui
+  CF.logAns('mul2', '7 · 2', '14', true, 3456, false); CF.logAns('mul2', '8 · 2', '', false, 10020, true);
+  ok(s2.log.length === 2 && s2.log[0].s === 3.5 && s2.log[0].c === 1 && s2.log[1].h === 1 && s2.log[1].a === '', 'jurnalul răspunsurilor');
+  const t2 = CF.reportText();
+  ok(t2.indexOf('Secundele de azi') >= 0 && t2.indexOf('8 · 2 → trucul (10 s)') >= 0 && t2.indexOf('7 · 2 → 14 (3,5 s)') >= 0, 'secundele în raport');
+  for (let i = 0; i < 4100; i++) CF.logAns('sprint', '2 · 2', '4', true, 1000, false);
+  ok(s2.log.length === 4000, 'jurnalul păstrează ultimele 4000 de răspunsuri');
 }
 
 // ---- 5. testul de pornire ----
@@ -152,7 +185,7 @@ const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.W
   const res = { mul2: 'k', mul4: 'x', mul8: 'k', add10: 'k', addUp: 's' };
   CF.applyTest(res);
   ok(s.lv.mul2.s === 2 && s.lv.mul8.s === 2 && !s.lv.mul4 && !s.lv.addUp, 'testul dă 2 stele doar nivelurilor știute repede');
-  ok(s.last === 'mul' && CF.nextLevel('mul') === 1, 'după test continuă de la primul gol');
+  ok(s.last === 'add' && CF.nextLevel('add') === 1, 'după test continuă de la primul gol (adunările sunt prima lume)');
   s.test = { done: true, date: '2026-10-01', res, partial: null }; s.name = 'Andrei';
   const txt = CF.reportText();
   ok(txt.indexOf('Andrei') >= 0 && txt.indexOf('Testul de pornire') >= 0 && txt.indexOf('știe ·2, ·8') >= 0 && txt.indexOf('încet 8 + 5') >= 0, 'raportul cu testul');
