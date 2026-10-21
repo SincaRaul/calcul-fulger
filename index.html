@@ -946,7 +946,7 @@ const WORLDS = [
     { id: 'add10', name: 'Perechile lui 10', short: 'perechile lui 10', ex: '7 + ? = 10', fast: 3000, rule: 'Perechile care fac 10: 1 și 9, 2 și 8, 3 și 7, 4 și 6, 5 și 5. Le folosești la toate trucurile de mai departe.', pool: () => shuffle(range(1, 9)), make: k => tenItem(k) },
     { id: 'addUp', name: 'Adunarea peste 10', short: '8 + 5', ex: '8 + 5 = 8 + 2 + 3', fast: 5000, rule: 'Faci 10: 8 + 5 = 8 + 2 + 3 = 10 + 3 = 13. Pornești de la numărul mai mare.', pool: () => shuffle(ADD_PAIRS), make: p => add20Item(p[0], p[1]) },
     { id: 'addDown', name: 'Scăderea peste 10', short: '13 − 5', ex: '13 − 5 = 13 − 3 − 2', fast: 5000, rule: 'Cobori la 10: 13 − 5 = 13 − 3 − 2 = 10 − 2 = 8.', pool: () => shuffle(SUB_PAIRS), make: p => sub20Item(p[0], p[1]) },
-    { id: 'addB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul lui 10', ex: 'adunări și scăderi peste 10', fast: 4000, rule: 'Nivelul final: adunări și scăderi peste 10, amestecate.', pool: () => shuffle(ADD_PAIRS.map(p => ({ t: 'a', p })).concat(SUB_PAIRS.map(p => ({ t: 's', p })))), make: x => (x.t === 'a' ? add20Item(x.p[0], x.p[1]) : sub20Item(x.p[0], x.p[1])) },
+    { id: 'addB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul lui 10', ex: 'adunări și scăderi peste 10', fast: 5000, rule: 'Nivelul final: adunări și scăderi peste 10, amestecate.', pool: () => shuffle(ADD_PAIRS.map(p => ({ t: 'a', p })).concat(SUB_PAIRS.map(p => ({ t: 's', p })))), make: x => (x.t === 'a' ? add20Item(x.p[0], x.p[1]) : sub20Item(x.p[0], x.p[1])) },
   ] },
   { id: 'big', name: 'Numere mari', tile: '56 + 6', levels: [
     { id: 'big1', name: 'Zeci întregi', short: '47 + 30', ex: '47 + 30 și 77 − 30', fast: 6000, rule: 'Când aduni sau scazi zeci întregi, se schimbă doar zecile. Unitățile rămân la fel: 47 + 30 = 77.', gen: tensItem },
@@ -1255,10 +1255,11 @@ function reportText() {
     const h = hardest('mul', 10); if (h.length) out.push('De lucrat: ' + h.map(f => f.a + DOT + f.b).join(', '));
   }
   const sd = sprintDays().slice(-7); if (sd.length) out.push('Sprint, pe zile: ' + sd.map(x => x.best).join(', '));
-  const lg = logGroups(k);
+  // Secundele din ultima zi jucată: un raport trimis a doua zi dimineața le are și el.
+  const lastD = S.log.length ? S.log[S.log.length - 1].d : k, lg = logGroups(lastD);
   if (lg.length) {
     out.push('');
-    out.push('Secundele de azi (mijlocul = jumătate din răspunsuri au fost mai rapide):');
+    out.push('Secundele ' + (lastD === k ? 'de azi' : 'din ' + niceDate(lastD)) + ' (mijlocul = jumătate din răspunsuri au fost mai rapide):');
     lg.forEach(g => out.push('· ' + g.name + ': ' + nr(g.n, 'răspuns', 'răspunsuri') + ', ' + g.ok + ' corecte, mijlocul ' + secs(g.med) + '. Cele mai lente: ' + g.slow.map(logItem).join('; ')));
   }
   out.push('');
@@ -1706,7 +1707,8 @@ function renderHome() {
     '<a class="zsign" href="' + SITE + '" target="_blank" rel="noopener"><span class="zseal">' + zeroSvg('idle') + '</span><span>Făcut de <b>Academia Z.E.R.O.</b></span></a>';
 }
 function worldLockText(wid) {
-  return 'Se deschide după nivelul final de la ' + worldMissing(wid).map(x => '„' + WORLDK[x].name + '”').join(' și ') + ': ' + GATE_OK + ' corecte din 20, ' + GATE_FAST + ' rapide.';
+  const miss = worldMissing(wid);
+  return 'Se deschide după nivelul final de la ' + miss.map(x => '„' + WORLDK[x].name + '”').join(' și ') + ': ' + GATE_OK + ' corecte din 20, ' + GATE_FAST + ' rapide (sub ' + bossOf(miss[0]).fast / 1000 + ' secunde).';
 }
 function worldRow(w) {
   const ws = worldStars(w.id);
@@ -1835,23 +1837,35 @@ function levelNext() {
   const e = r.plan[r.i]; r.entry = e; r.input = ''; r.covered = false; r.locked = false; r.lastWrong = ''; r.t0 = now();
   if (e.mode === 'demo') { r.phase = 'demo'; r.demo = 0; }
   else if (e.mode === 'fill') { r.phase = 'fill'; startFill(e.blanks); }
-  else { r.phase = 'solo'; armTruc(soloTruc); }
+  else { r.phase = 'solo'; armTruc(soloTruc, () => levelSubmit('ok'), lvOf(r).fast + 3000); }
   renderLevel(); updateBar(); updatePts();
 }
 /* Trucul vine singur după 10 secunde fără răspuns (profesorul, 2026-10-14: fără butoanele „Truc” și „Nu știu”;
    mai bine încearcă decât să nu scrie nimic). Dacă a început să scrie, așteaptă 10 secunde de la ultima cifră.
-   Merge la niveluri (pașii trucului) și la antrenamentul cu hartă (indiciul). La testul de pornire nu vine. */
+   Merge la niveluri (pașii trucului) și la antrenamentul cu hartă (indiciul). La testul de pornire nu vine.
+   Dacă a scris ceva, dar n-a apăsat OK, se trimite singur ce a scris (profesorul, 2026-10-22).
+   La niveluri lente, ceasul e limita de „rapid” + 3 s, dar nu sub 10 s. Cu telefonul închis, ceasul stă. */
 const AUTO_TRUC_MS = 10000;
-function armTruc(fire) {
-  const r = RUN, id = r.qid = (r.qid || 0) + 1;
+function armTruc(fire, send, ms) {
+  const r = RUN, id = r.qid = (r.qid || 0) + 1, lim = Math.max(AUTO_TRUC_MS, ms || 0);
   const tick = () => {
     if (RUN !== r || r.qid !== id) return;
-    const wait = Math.max(r.t0, r.tk || 0) + AUTO_TRUC_MS - now();
+    if (document.hidden) { setTimeout(tick, 1000); return; }
+    const wait = Math.max(r.t0, r.tk || 0) + lim - now();
     if (r.locked || wait > 50) { setTimeout(tick, Math.max(wait, 300)); return; }
-    fire();
+    if (!blank(r.input)) send(); else fire();
   };
-  setTimeout(tick, AUTO_TRUC_MS);
+  setTimeout(tick, lim);
 }
+// Telefonul închis sau altă aplicație deschisă: timpul de atunci nu se pune la calcul. Sprintul curge mai departe.
+let hidAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hidAt = now(); return; }
+  const r = RUN, gap = hidAt ? now() - hidAt : 0; hidAt = 0;
+  if (!r || gap <= 0 || r.kind === 'sprint') return;
+  if (r.t0) r.t0 += gap; if (r.tk) r.tk += gap;
+  if (r.vec) { r.vec.t0 += gap; r.vec.ta += gap; }
+});
 function startFill(blanks) {
   const r = RUN, it = r.entry.it, n = it.slots.length, g = n - blanks;
   r.fill = { vals: it.slots.map((s, i) => (i < g ? s.v : null)), st: it.slots.map((s, i) => (i < g ? 'given' : 'blank')), active: -1, tries: 0, perfect: true, just: -1 };
@@ -2037,7 +2051,11 @@ function levelSubmit(kind) {
 function soloTruc() {
   const r = RUN; if (!r || r.phase !== 'solo' || r.locked) return;
   const e = r.entry;
-  logAns(lvOf(r).id, e.it.q, r.input, false, now() - r.t0, true); save();
+  logAns(lvOf(r).id, e.it.q, r.input, false, now() - r.t0, true);
+  // N-a răspuns la timp: calculul nu e încă învățat (profesorul, 2026-10-22). Harta află, iar calculul mai vine o dată.
+  if (e.it.fk) famUpdate(e.it.fk.m, e.it.fk.k, { correct: false, dt: now() - r.t0 });
+  if (r.extra < 3) { r.plan.splice(Math.min(r.plan.length, r.i + 4), 0, { mode: 'solo', it: e.it, extra: true }); r.extra++; }
+  save();
   if (e.counted) { r.stats.n++; e.counted = false; }
   r.combo = 0; updateCombo();
   e.helpMode = true; r.phase = 'fill'; startFill(e.it.slots.length); r.fill.perfect = false;
@@ -2320,7 +2338,7 @@ function next() {
   r.phase = it.type === 'teach' ? 'teach' : (it.type === 'place' ? 'place' : 'ask');
   if (it.type === 'teach') famTeach(r.mode, it.k);
   r.t0 = now();
-  if (r.phase === 'ask') armTruc(showHint);
+  if (r.phase === 'ask') armTruc(showHint, () => submit('ok'));
   renderStage(); updateBar(); updatePts();
 }
 function renderStage() {
@@ -2424,8 +2442,10 @@ function submit(kind) {
 
   r.stats.q++; day.q++;
   const fast = correct && !r.hinted && dt <= q.fast;
-  famUpdate(r.mode, it.k, { correct, dt, hinted: r.hinted, rep: !!it.rep });
+  // Cu indiciul venit singur (n-a răspuns la timp), calculul nu e încă învățat și mai vine o dată (profesorul, 2026-10-22).
+  famUpdate(r.mode, it.k, { correct: correct && !r.hinted, dt, rep: !!it.rep });
   if (correct) {
+    if (r.hinted) scheduleRepeat(it);
     day.ok++; r.stats.ok++; r.stats.row++; r.stats.best = Math.max(r.stats.best, r.stats.row); r.stats.wrongRow = 0; r.combo = r.stats.row;
     let pts = r.hinted ? 5 : 10; if (fast) { pts += 5; r.stats.fast++; }
     S.xp += pts; r.stats.xp += pts;
