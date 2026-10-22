@@ -186,6 +186,15 @@ const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.W
   CF.applyTest(res);
   ok(s.lv.mul2.s === 2 && s.lv.mul8.s === 2 && !s.lv.mul4 && !s.lv.addUp, 'testul dă 2 stele doar nivelurilor știute repede');
   ok(s.last === 'add' && CF.nextLevel('add') === 1, 'după test continuă de la primul gol (adunările sunt prima lume)');
+  {
+    const s2 = CF.blankState(); CF.setS(s2);
+    const r2 = { add10: 'k', addUp: 's', addDown: 'k', big1: 'k', big2: 'k', big3: 'k', big4: 'k', big5: 'x' };
+    s2.test = { done: true, date: '2026-10-22', res: r2, partial: null };
+    ok(CF.worldPassed('add') && CF.worldOpen('mul') && CF.worldOpen('big') && !CF.worldPassed('big') && !CF.worldOpen('div') && !CF.worldOpen('neg'), 'testul deschide lumile știute (și încet), nu și pe cele cu un tip greșit');
+    s2.test.done = false;
+    ok(!CF.worldOpen('mul'), 'un test neterminat nu deschide lumi');
+    CF.setS(s);
+  }
   s.test = { done: true, date: '2026-10-01', res, partial: null }; s.name = 'Andrei';
   const txt = CF.reportText();
   ok(txt.indexOf('Andrei') >= 0 && txt.indexOf('Testul de pornire') >= 0 && txt.indexOf('știe ·2, ·8') >= 0 && txt.indexOf('încet 8 + 5') >= 0, 'raportul cu testul');

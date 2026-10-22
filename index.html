@@ -1129,7 +1129,10 @@ function buildFamRound(mode) {
 /* ---- nivelurile: deblocare, plan, stele ---- */
 const lvState = id => Object.assign({ s: 0, p: 0, b: 0 }, S.lv[id] || {});
 const bossOf = wid => { const w = WORLDK[wid]; return w.levels[w.levels.length - 1]; };
-const worldPassed = wid => lvState(bossOf(wid).id).s >= 2;
+// O lume e trecută cu 2 stele la nivelul final sau dacă la testul de pornire a răspuns corect la toate tipurile ei,
+// chiar încet (profesorul, 2026-10-22: ce știe la test nu mai joacă din nou ca să ajungă mai departe).
+const testKnows = wid => !!S.test.done && WORLDK[wid].levels.every(L => L.boss || 'ks'.indexOf(S.test.res[L.id] || '-') >= 0);
+const worldPassed = wid => lvState(bossOf(wid).id).s >= 2 || testKnows(wid);
 const worldMissing = wid => (WORLD_NEEDS[wid] || []).filter(x => !worldPassed(x));
 // O lume în care a jucat deja rămâne deschisă (progresul de dinainte de 2026-10-14 nu se pierde).
 const worldPlayed = wid => WORLDK[wid].levels.some(L => lvState(L.id).p > 0);
@@ -2294,8 +2297,10 @@ function testResultsHTML() {
 }
 function renderTestDone(rankUp) {
   const res = S.test.res, list = testList(), known = list.filter(t => res[WORLDK[t.wid].levels[t.li].id] === 'k').length;
+  const opened = WORLDS.filter(w => WORLD_NEEDS[w.id].length && !worldMissing(w.id).length);
   el.done.innerHTML = '<div class="hero"><span class="tag">Testul de pornire</span><h1>Testul e gata!</h1><p>Știi deja <b>' + known + ' din ' + nr(list.length, 'tip', 'tipuri') + '</b> de calcule. Nivelurile pe care le știi s-au deschis cu 2 stele.</p></div>' +
     (rankUp ? '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + rankUp + ', ' + rankName(rankUp) + '!</p>' : '') +
+    (opened.length ? '<div class="unlock gold">' + ICON.unlock + '<div><b>' + (opened.length === 1 ? 'Lume deschisă: ' : 'Lumi deschise: ') + opened.map(w => w.name).join(', ') + '!</b><div class="small muted">Le-ai deschis cu ce știi deja.</div></div></div>' : '') +
     testResultsHTML() + '<p class="center">Începi de aici:</p>' + ctaHTML() +
     '<div class="btnrow">' + btn('report', 'Trimite rezultatul', false) + btn('home', 'Acasă', false) + '</div>';
 }
