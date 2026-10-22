@@ -103,7 +103,7 @@ CF.WORLDS.forEach(w => w.levels.forEach((L, li) => {
     pool.slice(0, 40).forEach(p => { const it = L.make(p); nItems++; checkItem(it, w.id + ' ' + L.id + ' „' + it.q + '”', w.id); });
   }
 }));
-ok(nLevels === 33, 'sunt ' + nLevels + ' niveluri, nu 33');
+ok(nLevels === 39, 'sunt ' + nLevels + ' niveluri, nu 39');
 // tabla lui n cuprinde toate calculele n·2 … n·9
 [2, 4, 8, 9, 5, 3, 6, 7].forEach(n => { const L = CF.WORLDK.mul.levels.find(x => x.id === 'mul' + n), got = new Set(); L.pool().forEach(p => got.add(L.make(p).ans)); ok(got.size === 8, 'tabla lui ' + n + ' nu are toate cele 8 calcule'); });
 // pătratele: 2 · 2 … 9 · 9, înainte de nivelul final; la tablă: 3 de completat, 12 singur
@@ -148,7 +148,7 @@ const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.W
 // ---- 4b. lumile se deschid după harta de dependențe (2026-10-14) ----
 {
   const s = CF.blankState(); CF.setS(s);
-  ok(CF.WORLDS.map(w => w.id).join(',') === 'add,mul,big,div,neg', 'ordinea lumilor: ' + CF.WORLDS.map(w => w.id).join(','));
+  ok(CF.WORLDS.map(w => w.id).join(',') === 'add,mul,big,div,neg,ord', 'ordinea lumilor: ' + CF.WORLDS.map(w => w.id).join(','));
   ok(CF.worldOpen('add') && ['mul', 'big', 'div', 'neg'].every(w => !CF.worldOpen(w)), 'la început e deschisă doar lumea adunărilor');
   ok(!CF.isUnlocked('mul', 0) && CF.nextLevel('mul') === -1, 'o lume închisă nu are niveluri deschise');
   const addB = CF.WORLDK.add.levels[CF.WORLDK.add.levels.length - 1];
@@ -180,7 +180,7 @@ const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.W
 // ---- 5. testul de pornire ----
 {
   const s = CF.blankState(); CF.setS(s);
-  ok(CF.testList().length === 28, 'testul are ' + CF.testList().length + ' tipuri, nu 28');
+  ok(CF.testList().length === 33, 'testul are ' + CF.testList().length + ' tipuri, nu 33');
   ok(CF.testVerdict(false, false, 1) === 'x' && CF.testVerdict(true, true, 1) === 'k' && CF.testVerdict(true, false, 1) === null && CF.testVerdict(true, false, 2) === 's' && CF.testVerdict(true, true, 2) === 'k', 'verdictele testului');
   const res = { mul2: 'k', mul4: 'x', mul8: 'k', add10: 'k', addUp: 's' };
   CF.applyTest(res);

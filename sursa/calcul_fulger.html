@@ -890,6 +890,70 @@ function twoSignsItem() {
      SL(ans, 'Acum calculează ' + fmt(first) + ' ' + sg + ' ' + b + '.', 'Rezultatul e ' + fmt(ans) + '.', negHelp(first, sg, b))], null, null);
 }
 
+/* ---- ordinea operațiilor: itemul 1 de la Evaluarea Națională (profesorul, 2026-10-22).
+   Aceleași cuvinte ca pe fișa EVN: parantezele, dinăuntru în afară; înmulțirile și împărțirile, de la stânga
+   la dreapta; adunările și scăderile, de la stânga la dreapta. Fără zecimale: tastatura nu are virgulă. ---- */
+// Un produs sau un cât din tablă: „7 · 8” sau „56 : 7”.
+function mulOrDiv() { const x = rnd(2, 9), y = rnd(2, 9); return Math.random() < 0.5 ? { t: x + ' ' + DOT + ' ' + y, v: x * y } : { t: (x * y) + ' : ' + x, v: y }; }
+function ordFirstItem() {
+  const P = mulOrDiv(), plus = Math.random() < 0.5, a = plus ? rnd(2, 40) : rnd(P.v, P.v + 40), op = plus ? '+' : MINUS, ans = plus ? a + P.v : a - P.v;
+  const q = a + ' ' + op + ' ' + P.t;
+  return mk(q, ans, [[q + ' = ' + a + ' ' + op + ' ', { s: 0 }], ['= ', { s: 1 }]],
+    [SL(P.v, 'Cât face ' + P.t + '? Asta se face întâi.', 'Întâi ' + P.t + ' = ' + P.v + '.'),
+     SL(ans, 'Acum cât face ' + a + ' ' + op + ' ' + P.v + '?', a + ' ' + op + ' ' + P.v + ' = ' + ans + '.')], null, null);
+}
+function ordTwoItem() {
+  let A, B; do { A = mulOrDiv(); B = mulOrDiv(); } while (A.v === B.v);
+  const plus = Math.random() < 0.4 || A.v < B.v, op = plus ? '+' : MINUS, ans = plus ? A.v + B.v : A.v - B.v, q = A.t + ' ' + op + ' ' + B.t;
+  return mk(q, ans, [[q + ' = ', { s: 0 }, ' ' + op + ' ', { s: 1 }], ['= ', { s: 2 }]],
+    [SL(A.v, 'Cât face ' + A.t + '?', 'Întâi ' + A.t + ' = ' + A.v + '.'),
+     SL(B.v, 'Și cât face ' + B.t + '?', 'Apoi ' + B.t + ' = ' + B.v + '.'),
+     SL(ans, 'Acum cât face ' + A.v + ' ' + op + ' ' + B.v + '?', A.v + ' ' + op + ' ' + B.v + ' = ' + ans + '.')], null, null);
+}
+// De la stânga la dreapta: 24 : 4 · 2 (nu 24 : 8), 6 · 4 : 3 și 20 − 8 + 3 (nu 20 − 11).
+function ordLRItem() {
+  const form = rnd(1, 3); let left, first, rest, ans;
+  if (form === 1) { const d = rnd(2, 9), k = rnd(2, 9), e = rnd(2, 9); left = (d * k) + ' : ' + d; first = k; rest = ' ' + DOT + ' ' + e; ans = k * e; }
+  else if (form === 2) { let x, y, d; do { x = rnd(2, 9); y = rnd(2, 9); d = rnd(2, 9); } while ((x * y) % d || d === y || d === x); left = x + ' ' + DOT + ' ' + y; first = x * y; rest = ' : ' + d; ans = first / d; }
+  else { const a = rnd(12, 60), b = rnd(2, a - 2), c = rnd(2, 30); left = a + ' ' + MINUS + ' ' + b; first = a - b; rest = ' + ' + c; ans = first + c; }
+  const q = left + rest;
+  return mk(q, ans, [[q + ' = ', { s: 0 }, rest], ['= ', { s: 1 }]],
+    [SL(first, 'De la stânga la dreapta: cât face ' + left + '?', 'Întâi ' + left + ' = ' + first + ', pentru că e în stânga.'),
+     SL(ans, 'Acum cât face ' + first + rest + '?', first + rest + ' = ' + ans + '.')], null, null);
+}
+function ordParItem() {
+  const b = rnd(2, 20), c = rnd(2, 20), inPlus = Math.random() < 0.5 || b <= c, inner = inPlus ? b + c : b - c;
+  const par2 = '(' + b + ' ' + (inPlus ? '+' : MINUS) + ' ' + c + ')', plus = Math.random() < 0.4;
+  const sl0 = SL(inner, 'Parantezele întâi: cât face ' + par2.slice(1, -1) + '?', 'Întâi parantezele: ' + par2.slice(1, -1) + ' = ' + inner + '.');
+  if (Math.random() < 0.4) {
+    const a = plus ? rnd(2, 40) : rnd(inner, inner + 40), ans = plus ? a + inner : a - inner, op = plus ? '+' : MINUS, q = a + ' ' + op + ' ' + par2;
+    return mk(q, ans, [[q + ' = ' + a + ' ' + op + ' ', { s: 0 }], ['= ', { s: 1 }]],
+      [sl0, SL(ans, 'Acum cât face ' + a + ' ' + op + ' ' + inner + '?', a + ' ' + op + ' ' + inner + ' = ' + ans + '.')], null, null);
+  }
+  const k = inner > 12 ? rnd(2, 4) : rnd(2, 9), prod = k * inner, a = plus ? rnd(2, 40) : rnd(prod, prod + 40), ans = plus ? a + prod : a - prod, op = plus ? '+' : MINUS;
+  const q = a + ' ' + op + ' ' + k + ' ' + DOT + ' ' + par2;
+  return mk(q, ans, [[q + ' = ' + a + ' ' + op + ' ' + k + ' ' + DOT + ' ', { s: 0 }], ['= ' + a + ' ' + op + ' ', { s: 1 }], ['= ', { s: 2 }]],
+    [sl0, SL(prod, 'Înmulțirea înaintea ' + (plus ? 'adunării' : 'scăderii') + ': cât face ' + k + ' ' + DOT + ' ' + inner + '?', 'Apoi ' + k + ' ' + DOT + ' ' + inner + ' = ' + prod + '.'),
+     SL(ans, 'Acum cât face ' + a + ' ' + op + ' ' + prod + '?', a + ' ' + op + ' ' + prod + ' = ' + ans + '.')], null, null);
+}
+// Cu semne: 3 − 2 · (1 − 5) = 3 − 2 · (−4) = 3 + 8 și 12 − 4 · 5 = 12 − 20 = −8.
+function ordNegItem() {
+  if (Math.random() < 0.3) {
+    const x = rnd(3, 9), y = rnd(3, 9), prod = x * y, a = rnd(1, prod - 1), ans = a - prod, q = a + ' ' + MINUS + ' ' + x + ' ' + DOT + ' ' + y;
+    return mk(q, ans, [[q + ' = ' + a + ' ' + MINUS + ' ', { s: 0 }], ['= ', { s: 1 }]],
+      [SL(prod, 'Cât face ' + x + ' ' + DOT + ' ' + y + '? Asta se face întâi.', 'Întâi ' + x + ' ' + DOT + ' ' + y + ' = ' + prod + '.'),
+       SL(ans, 'Acum ' + a + ' ' + MINUS + ' ' + prod + '. Scazi mai mult decât ai, deci rezultatul are minus.', a + ' ' + MINUS + ' ' + prod + ' = ' + fmt(ans) + '.')], null, null);
+  }
+  const a = rnd(1, 20), k = rnd(2, 9), b = rnd(1, 9), c = rnd(b + 1, b + 9), inner = b - c, prod = k * (c - b);
+  const minusOut = Math.random() < 0.6, op = minusOut ? MINUS : '+', sg = minusOut ? '+' : MINUS, ans = minusOut ? a + prod : a - prod;
+  const q = a + ' ' + op + ' ' + k + ' ' + DOT + ' (' + b + ' ' + MINUS + ' ' + c + ')';
+  return mk(q, ans, [[q + ' = ' + a + ' ' + op + ' ' + k + ' ' + DOT + ' (', { s: 0 }, ')'], ['= ' + a + ' ', { s: 1 }, ' ', { s: 2 }], ['= ', { s: 3 }]],
+    [SL(inner, 'Parantezele întâi: cât face ' + b + ' ' + MINUS + ' ' + c + '?', b + ' ' + MINUS + ' ' + c + ' = ' + fmt(inner) + '.'),
+     CH(sg, ['+', MINUS], 'În fața lui ' + k + ' ' + DOT + ' (' + fmt(inner) + ') e ' + op + '. Ce semn rămâne?', minusOut ? 'Minus lângă minus face plus.' : 'Plus lângă minus face minus.'),
+     SL(prod, 'Fără semne: cât face ' + k + ' ' + DOT + ' ' + (c - b) + '?', k + ' ' + DOT + ' ' + (c - b) + ' = ' + prod + '.'),
+     SL(ans, 'Acum cât face ' + a + ' ' + sg + ' ' + prod + '?', a + ' ' + sg + ' ' + prod + ' = ' + fmt(ans) + '.')], null, null);
+}
+
 /* ---- lumile și nivelurile ---- */
 const MUL_ORDER = [2, 4, 8, 9, 5, 3, 6, 7];
 const MUL_EX = { 2: '2 · 7 = 7 + 7', 4: '4 · 7: 7 → 14 → 28', 8: '8 · 7: 7 → 14 → 28 → 56', 9: '9 · 7 = 70 − 7', 5: '5 · 8: jumătate din 80', 3: '3 · 7 = 14 + 7', 6: '6 · 7 = 35 + 7', 7: '7 · 8 = 40 + 16' };
@@ -947,12 +1011,21 @@ const WORLDS = [
     { id: 'neg6', name: 'Două semne lipite', short: '5 − (−2)', ex: '5 − (−2)', fast: 8000, rule: 'Minus lângă minus face plus: 5 − (−2) = 5 + 2 = 7. Plus lângă minus face minus: 5 + (−2) = 5 − 2 = 3.', gen: twoSignsItem },
     { id: 'negB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul semnelor', ex: 'toate tipurile', fast: 8000, rule: 'Nivelul final: toate tipurile, amestecate.', gen: () => pick([debtItem, spendItem, doubleDebtItem, () => signItem('mul'), () => signItem('div'), twoSignsItem])() },
   ] },
+  { id: 'ord', name: 'Ordinea operațiilor', tile: '2 + 3 ' + DOT + ' 4', levels: [
+    { id: 'ord1', name: 'Întâi · și :', short: 'întâi · și :', ex: '8 + 14 : 2', fast: 10000, rule: 'Înmulțirile și împărțirile se fac întâi, adunările și scăderile la urmă. 8 + 14 : 2 = 8 + 7 = 15.', gen: ordFirstItem },
+    { id: 'ord2', name: 'Două operații întâi', short: 'două operații', ex: '36 : 4 − 4 · 2', fast: 12000, rule: 'Când sunt două înmulțiri sau împărțiri, le faci pe amândouă întâi, apoi aduni sau scazi. 36 : 4 − 4 · 2 = 9 − 8 = 1.', gen: ordTwoItem },
+    { id: 'ord3', name: 'De la stânga la dreapta', short: 'de la stânga', ex: '24 : 4 · 2', fast: 10000, rule: 'Înmulțirile și împărțirile, de la stânga la dreapta. 24 : 4 · 2 = 6 · 2 = 12, nu 24 : 8. La fel adunările și scăderile: 20 − 8 + 3 = 12 + 3 = 15.', gen: ordLRItem },
+    { id: 'ord4', name: 'Parantezele întâi', short: 'parantezele', ex: '52 − 2 · (25 − 5)', fast: 14000, rule: 'Parantezele, dinăuntru în afară, se fac primele. 52 − 2 · (25 − 5) = 52 − 2 · 20 = 52 − 40 = 12.', gen: ordParItem },
+    { id: 'ord5', name: 'Cu numere negative', short: 'cu semne', ex: '3 − 2 · (1 − 5)', fast: 15000, rule: 'Parantezele întâi, apoi semnele: minus lângă minus face plus. 3 − 2 · (1 − 5) = 3 − 2 · (−4) = 3 + 8 = 11.', gen: ordNegItem },
+    { id: 'ordB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul ordinii', ex: 'ca la itemul 1 de la examen', fast: 14000, rule: 'Nivelul final: calcule ca la itemul 1 de la Evaluarea Națională, amestecate.', gen: () => pick([ordFirstItem, ordTwoItem, ordLRItem, ordParItem, ordNegItem])() },
+  ] },
 ];
 /* Lumile, în ordinea hărții de dependențe (profesorul, 2026-10-14): înmulțirea cere adunările,
-   împărțirea cere înmulțirea, numerele negative cer numerele mari și împărțirile.
+   împărțirea cere înmulțirea, numerele negative cer numerele mari și împărțirile; ordinea operațiilor cere negativele.
    O lume se deschide când lumile de dinainte au nivelul final cu 2 stele: GATE_OK corecte din 20, oricât de repede
    (profesorul, 2026-10-22: viteza dă a treia stea, nu deschide lumi). 3 stele = 19 corecte și 15 rapide. */
-const WORLD_NEEDS = { add: [], mul: ['add'], big: ['add'], div: ['mul'], neg: ['big', 'div'] };
+const WORLD_NEEDS = { add: [], mul: ['add'], big: ['add'], div: ['mul'], neg: ['big', 'div'], ord: ['neg'] };
+const minusOK = wid => wid === 'neg' || wid === 'ord';   // tastatura are minus doar unde rezultatul poate fi negativ
 const GATE_OK = 16;
 WORLDS.sort((a, b) => Object.keys(WORLD_NEEDS).indexOf(a.id) - Object.keys(WORLD_NEEDS).indexOf(b.id));
 const WORLDK = {};
@@ -1873,7 +1946,7 @@ const dispVal = (sl, val) => (sl.kind === 'choice' ? esc(String(val)) : fmt(val)
 function qhead(it, done) { return '<div class="qhead"><span>' + it.q + '</span><span class="eqs">=</span><span class="box' + (done ? ' ok pop' : '') + '" id="qbox">' + (done ? fmt(it.ans) : '?') + '</span></div>'; }
 function renderLevel() {
   const r = RUN, L = lvOf(r);
-  el.keys.classList.remove('off'); el.keys.classList.toggle('nominus', r.wid !== 'neg');
+  el.keys.classList.remove('off'); el.keys.classList.toggle('nominus', !minusOK(r.wid));
   if (r.phase === 'vec') { renderVec(); return; }
   if (r.phase === 'intro') { el.stage.innerHTML = levelIntroHTML(r, L); setDock('actions', introButtons(L)); return; }
   const it = r.entry.it;
@@ -1934,7 +2007,7 @@ function fillKey(k) {
   const r = RUN, f = r.fill; if (f.active < 0) return;
   const sl = r.entry.it.slots[f.active]; if (sl.kind !== 'num') return;
   if (k === 'ok') { if (!blank(r.input)) { if (parseInput(r.input) === sl.v) slotRight(); else slotWrong(); } return; }
-  if (!typeInto(k, r.wid === 'neg')) return;
+  if (!typeInto(k, minusOK(r.wid))) return;
   updateActiveSlot();
 }
 function levelChoice(idx) {
@@ -1994,7 +2067,7 @@ function lfixHTML(r, it) {
 function soloKey(k) {
   const r = RUN;
   if (k === 'ok') { levelSubmit('ok'); return; }
-  if (!typeInto(k, r.wid === 'neg')) return;
+  if (!typeInto(k, minusOK(r.wid))) return;
   if (k !== 'back' && r.phase === 'fix' && !r.covered) { r.covered = true; const lc = $('#lc'); if (lc) lc.classList.add('covered'); }
   updateBox();
 }
@@ -2216,7 +2289,7 @@ function renderTest() {
     return;
   }
   const t = r.list[r.at], w = WORLDK[t.wid];
-  el.keys.classList.toggle('nominus', t.wid !== 'neg');
+  el.keys.classList.toggle('nominus', !minusOK(t.wid));
   el.stage.innerHTML = '<div class="ask"><span class="tag">Test · ' + w.name + '</span><div class="q' + qLen(r.it.q) + '"><span class="qt">' + r.it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div><div class="fb" id="fb"></div></div>';
   setDock('keys'); updateBox();
 }
@@ -2239,7 +2312,7 @@ function testAsk() {
 function testKey(k) {
   const r = RUN; if (r.phase !== 'q' || r.locked) return;
   if (k === 'ok') { testSubmit('ok'); return; }
-  if (!typeInto(k, r.list[r.at].wid === 'neg')) return;
+  if (!typeInto(k, minusOK(r.list[r.at].wid))) return;
   updateBox();
 }
 function testSubmit(kind) {
