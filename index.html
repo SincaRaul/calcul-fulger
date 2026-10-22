@@ -968,10 +968,10 @@ const WORLDS = [
 ];
 /* Lumile, în ordinea hărții de dependențe (profesorul, 2026-10-14): înmulțirea cere adunările,
    împărțirea cere înmulțirea, numerele negative cer numerele mari și împărțirile.
-   O lume se deschide când lumile de dinainte au nivelul final trecut cu GATE_OK corecte, dintre care GATE_FAST rapide.
-   Prag mediu, ales ca să nu-l blocheze: 16 din 20 corecte, 12 rapide (3 stele = 19 și 15). */
+   O lume se deschide când lumile de dinainte au nivelul final cu 2 stele: GATE_OK corecte din 20, oricât de repede
+   (profesorul, 2026-10-22: viteza dă a treia stea, nu deschide lumi). 3 stele = 19 corecte și 15 rapide. */
 const WORLD_NEEDS = { add: [], mul: ['add'], big: ['add'], div: ['mul'], neg: ['big', 'div'] };
-const GATE_OK = 16, GATE_FAST = 12;
+const GATE_OK = 16;
 WORLDS.sort((a, b) => Object.keys(WORLD_NEEDS).indexOf(a.id) - Object.keys(WORLD_NEEDS).indexOf(b.id));
 const WORLDK = {};
 WORLDS.forEach(w => { WORLDK[w.id] = w; w.levels.forEach((L, i) => {
@@ -1129,14 +1129,13 @@ function buildFamRound(mode) {
 /* ---- nivelurile: deblocare, plan, stele ---- */
 const lvState = id => Object.assign({ s: 0, p: 0, b: 0 }, S.lv[id] || {});
 const bossOf = wid => { const w = WORLDK[wid]; return w.levels[w.levels.length - 1]; };
-const worldPassed = wid => !!lvState(bossOf(wid).id).g;
+const worldPassed = wid => lvState(bossOf(wid).id).s >= 2;
 const worldMissing = wid => (WORLD_NEEDS[wid] || []).filter(x => !worldPassed(x));
 // O lume în care a jucat deja rămâne deschisă (progresul de dinainte de 2026-10-14 nu se pierde).
 const worldPlayed = wid => WORLDK[wid].levels.some(L => lvState(L.id).p > 0);
 const worldOpen = wid => ADMIN || worldPlayed(wid) || !worldMissing(wid).length;
 // Lumile pe care le deschide lumea wid (cele care o au printre condiții).
 const worldsAfter = wid => WORLDS.filter(w => (WORLD_NEEDS[w.id] || []).indexOf(wid) >= 0);
-const gatePassed = (ok, fast) => ok >= GATE_OK && fast >= GATE_FAST;
 function isUnlocked(wid, i) { const w = WORLDK[wid]; return worldOpen(wid) && (ADMIN || i === 0 || lvState(w.levels[i].id).s > 0 || lvState(w.levels[i - 1].id).s >= 2); }
 function worldStars(wid) { const w = WORLDK[wid]; let s = 0, passed = 0; w.levels.forEach(L => { const x = lvState(L.id).s; s += x; if (x >= 2) passed++; }); return { s, max: w.levels.length * 3, passed, n: w.levels.length }; }
 function nextLevel(wid) {
@@ -1179,12 +1178,12 @@ function starsFor(L, ok, fast) {
   const k = need2(L);
   return ok === L.ns && fast >= k ? 3 : (ok >= k ? 2 : 1);
 }
-// Scrie rezultatul unui nivel. La nivelul final ține minte și pragul pentru lumile următoare (g) și cele mai multe rapide (bf).
+// Scrie rezultatul unui nivel. La nivelul final ține minte și cele mai multe rapide (bf).
 function recordLevel(L, ok, fast) {
   const stars = starsFor(L, ok, fast), st = lvState(L.id), prev = st.s;
   const before = WORLDS.filter(w => worldOpen(w.id)).map(w => w.id);
   st.s = Math.max(prev, stars); st.p++; st.b = Math.max(st.b, ok);
-  if (L.boss) { st.bf = Math.max(st.bf || 0, fast); if (gatePassed(ok, fast)) st.g = 1; }
+  if (L.boss) st.bf = Math.max(st.bf || 0, fast);
   S.lv[L.id] = st;
   const newWorlds = WORLDS.filter(w => before.indexOf(w.id) < 0 && worldOpen(w.id));
   return { stars, prev, newWorlds };
@@ -1708,12 +1707,12 @@ function renderHome() {
 }
 function worldLockText(wid) {
   const miss = worldMissing(wid);
-  return 'Se deschide după nivelul final de la ' + miss.map(x => '„' + WORLDK[x].name + '”').join(' și ') + ': ' + GATE_OK + ' corecte din 20, ' + GATE_FAST + ' rapide (sub ' + bossOf(miss[0]).fast / 1000 + ' secunde).';
+  return 'Se deschide după nivelul final de la ' + miss.map(x => '„' + WORLDK[x].name + '”').join(' și ') + ': 2 stele, adică ' + GATE_OK + ' corecte din 20.';
 }
 function worldRow(w) {
   const ws = worldStars(w.id);
   if (!worldOpen(w.id)) {
-    const near = worldMissing(w.id).map(x => { const b = lvState(bossOf(x).id); return b.p ? 'Cel mai bun la „' + WORLDK[x].name + '”: ' + b.b + ' corecte, ' + nr(b.bf || 0, 'rapid', 'rapide') + '.' : ''; }).filter(Boolean).join(' ');
+    const near = worldMissing(w.id).map(x => { const b = lvState(bossOf(x).id); return b.p ? 'Cel mai bun la „' + WORLDK[x].name + '”: ' + b.b + ' corecte.' : ''; }).filter(Boolean).join(' ');
     return '<button class="mode locked" type="button" data-act="wlocked" data-w="' + w.id + '"><span class="tile">' + ICON.lock + '</span><span class="mb"><span class="n">' + w.name + '</span><span class="p">' + worldLockText(w.id) + (near ? ' ' + near : '') + '</span></span></button>';
   }
   return '<button class="mode" type="button" data-act="world" data-w="' + w.id + '"><span class="tile">' + w.tile + '</span><span class="mb"><span class="n">' + w.name + '</span><span class="p">' + ws.passed + ' din ' + ws.n + ' niveluri · ' + nr(ws.s, 'stea', 'stele') + ' din ' + ws.max + '</span><span class="stack"><i class="bg4" style="width:' + (ws.passed / ws.n * 100) + '%"></i></span></span>' + ICON.chev + '</button>';
@@ -2085,16 +2084,11 @@ function renderLevelDone(res) {
   if (res.rankUp) h += '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + res.rankUp + ', ' + rankName(res.rankUp) + '!</p>';
   if (res.trophy) h += '<div class="unlock gold">' + ICON.trophy + '<div><b>Trofeu nou: ' + res.trophy + '!</b><div class="small muted">Ai terminat lumea „' + w.name + '”.</div></div></div>';
   if (res.unlocked) h += '<div class="unlock">' + ICON.unlock + '<div><b>Nivel nou deschis:</b> ' + res.unlocked.name + '</div></div>';
-  res.newWorlds.forEach(w2 => { h += '<div class="unlock gold">' + ICON.unlock + '<div><b>Lume nouă deschisă: ' + w2.name + '!</b><div class="small muted">Ai trecut nivelul final cu ' + res.ok + ' corecte și ' + nr(res.fast, 'răspuns rapid', 'răspunsuri rapide') + '.</div></div></div>'; });
+  res.newWorlds.forEach(w2 => { h += '<div class="unlock gold">' + ICON.unlock + '<div><b>Lume nouă deschisă: ' + w2.name + '!</b><div class="small muted">Ai trecut nivelul final cu ' + res.ok + ' corecte.</div></div></div>'; });
   // Nivelul final încă nu deschide lumea următoare: îi spune exact cât îi mai trebuie.
   const waiting = L.boss && !worldPassed(res.wid) ? worldsAfter(res.wid).filter(w2 => !worldOpen(w2.id)) : [];
-  if (waiting.length) {
-    const lipsa = [];
-    if (res.ok < GATE_OK) lipsa.push(nr(GATE_OK - res.ok, 'corect', 'corecte') + ' în plus');
-    if (res.fast < GATE_FAST) lipsa.push(nr(GATE_FAST - res.fast, 'răspuns rapid', 'răspunsuri rapide') + ' în plus');
-    h += '<div class="card"><b>Pentru ' + waiting.map(w2 => '„' + w2.name + '”').join(' și ') + ':</b> ' + GATE_OK + ' corecte din 20, dintre care ' + GATE_FAST + ' rapide. Acum: ' + res.ok + ' corecte, ' + nr(res.fast, 'rapid', 'rapide') + '. Îți mai trebuie ' + lipsa.join(' și ') + '.</div>';
-  }
-  if (res.stars < 2) h += '<div class="card"><b>' + (res.ok >= need2(L) - 2 ? 'Aproape!' : 'Mai exersează!') + '</b> Pentru nivelul următor îți trebuie 2 stele: ' + need2(L) + ' din ' + L.ns + ' corecte când lucrezi singur. Acum știi trucul. Mai încearcă!</div>';
+  if (waiting.length) h += '<div class="card"><b>' + (res.ok >= GATE_OK - 2 ? 'Aproape!' : 'Mai exersează!') + '</b> Pentru ' + waiting.map(w2 => '„' + w2.name + '”').join(' și ') + ' îți trebuie 2 stele: ' + GATE_OK + ' corecte din 20. Acum ai ' + res.ok + '. Mai încearcă!</div>';
+  else if (res.stars < 2) h += '<div class="card"><b>' + (res.ok >= need2(L) - 2 ? 'Aproape!' : 'Mai exersează!') + '</b> ' + (L.boss ? 'Pentru' : 'Pentru nivelul următor îți trebuie') + ' 2 stele' + (L.boss ? ' îți trebuie' : '') + ': ' + need2(L) + ' din ' + L.ns + ' corecte când lucrezi singur. Acum știi trucul. Mai încearcă!</div>';
   else if (res.stars === 2) h += '<p class="small muted center">Pentru 3 stele: ' + (L.boss ? '19 din 20 corecte și 15 fulgere' : 'toate ' + L.ns + ' corecte și ' + need2(L) + ' fulgere') + '. Poți reveni oricând.</p>';
   const primary = res.stars < 2 ? btn('level', 'Mai încearcă', true, 'data-w="' + res.wid + '" data-l="' + res.li + '"')
     : (nextL ? btn('level', 'Nivelul următor', true, 'data-w="' + res.wid + '" data-l="' + (res.li + 1) + '"') : btn('home', 'Acasă', true));
