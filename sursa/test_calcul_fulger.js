@@ -152,13 +152,13 @@ const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.W
   ok(CF.worldOpen('add') && ['mul', 'big', 'div', 'neg'].every(w => !CF.worldOpen(w)), 'la început e deschisă doar lumea adunărilor');
   ok(!CF.isUnlocked('mul', 0) && CF.nextLevel('mul') === -1, 'o lume închisă nu are niveluri deschise');
   const addB = CF.WORLDK.add.levels[CF.WORLDK.add.levels.length - 1];
-  let r = CF.recordLevel(addB, 18, 11);
-  ok(r.stars === 2 && !CF.worldPassed('add') && !CF.worldOpen('mul') && !r.newWorlds.length, '18 corecte, dar 11 rapide: tabla rămâne închisă');
+  let r = CF.recordLevel(addB, 15, 15);
+  ok(r.stars === 1 && !CF.worldPassed('add') && !CF.worldOpen('mul') && !r.newWorlds.length, '15 corecte, chiar rapide: tabla rămâne închisă');
   ['add10', 'addUp', 'addDown'].forEach(id => { s.lv[id] = { s: 3, p: 1, b: 8 }; });
   ok(CF.nextLevel('add') === 3, 'cât timp tabla e închisă, propune nivelul final al adunărilor');
-  r = CF.recordLevel(addB, 16, 12);
-  ok(CF.worldPassed('add') && CF.worldOpen('mul') && CF.worldOpen('big') && !CF.worldOpen('div') && r.newWorlds.map(w => w.id).join(',') === 'mul,big', '16 corecte și 12 rapide deschid tabla și numerele mari');
-  ok(s.lv[addB.id].b === 18 && s.lv[addB.id].bf === 12 && s.lv[addB.id].s === 2, 'ține minte cele mai bune rezultate');
+  r = CF.recordLevel(addB, 16, 3);
+  ok(r.stars === 2 && CF.worldPassed('add') && CF.worldOpen('mul') && CF.worldOpen('big') && !CF.worldOpen('div') && r.newWorlds.map(w => w.id).join(',') === 'mul,big', '16 corecte, oricât de încet (2 stele), deschid tabla și numerele mari');
+  ok(s.lv[addB.id].b === 16 && s.lv[addB.id].bf === 15 && s.lv[addB.id].s === 2, 'ține minte cele mai bune rezultate');
   const mulB = CF.WORLDK.mul.levels[CF.WORLDK.mul.levels.length - 1];
   CF.recordLevel(mulB, 20, 20);
   ok(CF.worldOpen('div') && !CF.worldOpen('neg'), 'împărțirile după tablă; negativele cer și numerele mari');
