@@ -574,7 +574,7 @@ const INTRO = [2, 4, 8, 9, 5, 3, 6, 7];
 const SPRINT = [[2,7],[5,6],[3,8],[9,4],[6,7],[8,5],[4,7],[7,9],[3,6],[8,8],
   [6,9],[2,8],[7,7],[4,6],[9,3],[5,7],[8,6],[3,9],[7,8],[6,6],
   [4,8],[9,9],[5,9],[8,7],[6,4],[3,7],[9,6],[7,5],[8,9],[4,9]];
-const SPRINT_MS = 60000, SPRINT_TARGET = 25, ROUND = 20;
+const SPRINT_MS = 60000, SPRINT_TARGET = 25, ROUND = 20, DAILY_N = 12;
 
 // Antrenamentul cu hartă: repetă calculele la câteva zile, ca să nu le uite.
 const MODES = {
@@ -1344,7 +1344,7 @@ if (!HAS_DOM) {
   globalThis.CF = { FAM, FAMK, trickOf, mulHelp, divHelp, addHelp, subHelp, famQuestion, buildFamRound, assemble, famUpdate, famTeach, mulXY, nbCands, nbFirst, nbBridge, nbSteps,
     WORLDS, WORLDK, levelPlan, starsFor, isUnlocked, nextLevel, worldStars, testList, testVerdict, applyTest, reportText,
     WORLD_NEEDS, worldOpen, worldPassed, recordLevel, logAns,
-    blankState, levelOf, rankName, nr, SPRINT, repCode, repNorm, dayIdx, getS: () => S, setS: v => { S = v; }, setAdmin: v => { ADMIN = v; } };
+    blankState, levelOf, rankName, nr, SPRINT, repCode, repNorm, dayIdx, dayKey, dailyPlan, DAILY_N, getS: () => S, setS: v => { S = v; }, setAdmin: v => { ADMIN = v; } };
   return;
 }
 
@@ -1759,7 +1759,7 @@ function renderHome() {
       '<li>Lumile se deschid pe rând: întâi <b>adunările și scăderile</b>, apoi tabla și numerele mari.</li>' +
       '<li><b>Antrenamentul cu harta</b> te ajută să nu uiți ce ai învățat.</li></ol></section>' : '') +
     '<section class="list"><h3 class="eyebrow">Lumile</h3>' + WORLDS.map(worldRow).join('') + '</section>' +
-    '<section class="list"><h3 class="eyebrow">Antrenament</h3>' + trainRow('mul') + sprintRow() + '</section>' +
+    '<section class="list"><h3 class="eyebrow">Antrenament</h3>' + dailyRow() + trainRow('mul') + sprintRow() + '</section>' +
     '<div class="btnrow"><button class="btn" type="button" data-act="progress">Progresul meu</button><button class="btn" type="button" data-act="report">Trimite raportul</button></div>' +
     '<a class="zsign" href="' + SITE + '" target="_blank" rel="noopener"><span class="zseal">' + zeroSvg('idle') + '</span><span>Făcut de <b>Academia Z.E.R.O.</b></span></a>';
 }
@@ -1778,6 +1778,10 @@ function worldRow(w) {
 function trainRow(m) {
   const c = famCounts(m);
   return '<button class="mode" type="button" data-act="train" data-mode="' + m + '"><span class="tile">' + ICON.grid + '</span><span class="mb"><span class="n">Cu harta: ' + MODES[m].name.toLowerCase() + '</span><span class="p">' + (S.modes[m].placed ? c.known + ' din 36 pe hartă · 20 de calcule' : 'Întâi harta ta: 36 de calcule') + '</span>' + stackBar(c) + '</span>' + ICON.chev + '</button>';
+}
+function dailyRow() {
+  if (!dailyLevels().length) return '<button class="mode locked" type="button" data-act="dlocked"><span class="tile">' + ICON.lock + '</span><span class="mb"><span class="n">Runda zilei</span><span class="p">Se deschide după primul nivel cu 2 stele.</span></span></button>';
+  return '<button class="mode" type="button" data-act="daily"><span class="tile">' + ICON.flame + '</span><span class="mb"><span class="n">Runda zilei</span><span class="p">' + (S.daily === dayKey() ? 'Gata azi. Mâine vin alte calcule.' : DAILY_N + ' calcule amestecate din ce ai învățat') + '</span></span>' + ICON.chev + '</button>';
 }
 function sprintRow() {
   const rec = sprintRecord();
@@ -1814,7 +1818,7 @@ function closePlay() { el.play.hidden = true; document.body.classList.remove('pl
 function quit() {
   if (!RUN) return;
   const r = RUN; r.phase = 'gone'; RUN = null; closePlay();
-  if (r.kind === 'level') { renderWorld(r.wid); show('world'); } else { renderHome(); show('home'); }
+  if (r.kind === 'level' && !r.daily) { renderWorld(r.wid); show('world'); } else { renderHome(); show('home'); }
 }
 function updateBar() {
   const r = RUN; if (!r) return;
@@ -1886,12 +1890,56 @@ function startLevel(wid, li) {
     combo: 0, stats: { n: 0, ok: 0, fast: 0, xp: 0, best: 0, perfect: 0 }, extra: 0, xp0: S.xp };
   openPlay();
 }
+/* Runda zilei (profesorul, 2026-10-22): DAILY_N calcule amestecate din nivelurile trecute cu 2 stele.
+   Întâi nivelurile nevăzute de cele mai multe zile și cele greșite ultima dată; câte unul din fiecare nivel,
+   pe rând. Repetarea la câteva zile și amestecul țin minte mai bine decât un singur nivel jucat din nou. */
+function dailyLevels() { return WORLDS.flatMap(w => w.levels.filter(L => !L.boss && lvState(L.id).s >= 2)); }
+function dailyPlan() {
+  const levels = dailyLevels(); if (!levels.length) return [];
+  const d0 = dayIdx(), info = {};
+  S.log.forEach(x => {
+    const m = info[x.w] || (info[x.w] = { last: -1, n: 0, bad: 0 }), d = keyToIdx(x.d);
+    if (d > m.last) { m.last = d; m.n = 0; m.bad = 0; }
+    if (d === m.last) { m.n++; if (!x.c) m.bad++; }
+  });
+  // zile de când nu l-a mai văzut (cel mult 30) + până la 5 dacă a greșit atunci
+  const score = L => { const m = info[L.id]; return m ? Math.min(d0 - m.last, 30) + 5 * m.bad / m.n : 30; };
+  const order = shuffle(levels).sort((a, b) => score(b) - score(a)), plan = [], seen = new Set();
+  for (let i = 0; plan.length < DAILY_N && i < DAILY_N * 20; i++) {
+    const L = order[i % order.length], pool = L.pool();
+    for (let t = 0; t < 10; t++) {   // un calcul pe care nu l-a primit deja în rundă
+      const it = L.make(pool[rnd(0, pool.length - 1)]);
+      if (!seen.has(it.q)) { seen.add(it.q); plan.push({ mode: 'solo', it, counted: true, L }); break; }
+    }
+  }
+  return shuffle(plan);
+}
+function startDaily() {
+  const plan = dailyPlan(); if (!plan.length) { toast('Se deschide după primul nivel cu 2 stele.'); return; }
+  RUN = { kind: 'level', daily: true, wid: plan[0].L.wid, li: plan[0].L.idx, plan, i: -1, phase: 'solo', entry: null, fill: null, demo: 0, input: '', t0: 0, covered: false, locked: false, lastWrong: '', fixMsg: '',
+    combo: 0, stats: { n: 0, ok: 0, fast: 0, xp: 0, best: 0, perfect: 0 }, extra: 0, xp0: S.xp };
+  levelNext(); openPlay();
+}
+function finishDaily() {
+  const r = RUN, st = r.stats, pct = st.n ? st.ok / st.n : 0;
+  today().r++; S.daily = dayKey(); S.xp += 30; st.xp += 30; save();
+  const lvUp = levelOf(S.xp) > levelOf(r.xp0) ? levelOf(S.xp) : 0;
+  RUN = null; closePlay();
+  el.done.innerHTML = '<div class="hero"><span class="tag">Runda zilei</span><h1>' + (pct >= 0.9 ? 'Excelent!' : (pct >= 0.7 ? 'Bravo, merge!' : 'Ai muncit bine.')) + '</h1>' +
+    '<p>' + st.ok + ' din ' + st.n + ' corecte · ' + nr(st.fast, 'fulger', 'fulgere') + ' · +' + st.xp + ' puncte</p></div>' +
+    (lvUp ? '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + lvUp + ', ' + rankName(lvUp) + '!</p>' : '') +
+    '<p class="center">Calculele greșite au venit încă o dată. Mâine vin altele, din ce n-ai mai văzut de mult.</p>' +
+    '<div class="btnrow">' + btn('home', 'Acasă', true) + '</div>';
+  show('done');
+  if (pct >= 0.9) confetti(); else SFX.win();
+}
 function levelBegin(withDemo) { const r = RUN; if (!r || r.kind !== 'level' || r.phase !== 'intro') return; const L = lvOf(r); r.plan = levelPlan(L, withDemo && !L.boss); r.i = -1; levelNext(); }
 function levelNext() {
   const r = RUN; if (!r) return;
   r.i++;
   if (r.i >= r.plan.length) { finishLevel(); return; }
   const e = r.plan[r.i]; r.entry = e; r.input = ''; r.covered = false; r.locked = false; r.lastWrong = ''; r.t0 = now();
+  if (e.L) { r.wid = e.L.wid; r.li = e.L.idx; }   // runda zilei: fiecare calcul are nivelul lui
   if (e.mode === 'demo') { r.phase = 'demo'; r.demo = 0; }
   else if (e.mode === 'fill') { r.phase = 'fill'; startFill(e.blanks); }
   else { r.phase = 'solo'; armTruc(soloTruc, () => levelSubmit('ok'), lvOf(r).fast + 3000); }
@@ -2054,7 +2102,7 @@ function fillDone() {
 }
 function soloHTML(r, it, L) {
   const counted = r.plan.filter(e => e.mode === 'solo' && !e.extra), pos = counted.indexOf(r.plan[r.i]) + 1;
-  const tag = r.entry.extra ? 'Încă o dată' : (L.boss ? 'Nivelul final · ' : 'Singur · ') + pos + ' din ' + counted.length;
+  const tag = r.entry.extra ? 'Încă o dată' : (r.daily ? 'Runda zilei · ' : (L.boss ? 'Nivelul final · ' : 'Singur · ')) + pos + ' din ' + counted.length;
   return '<div class="ask"><span class="tag">' + tag + '</span><div class="q' + qLen(it.q) + '"><span class="qt">' + it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div>' +
     '<div class="fb" id="fb"></div></div>';
 }
@@ -2096,7 +2144,7 @@ function levelSubmit(kind) {
     return;
   }
   r.combo = 0; updateCombo();
-  if (r.extra < 3) { r.plan.splice(Math.min(r.plan.length, r.i + 4), 0, { mode: 'solo', it: e.it, extra: true }); r.extra++; }
+  if (r.extra < 3) { r.plan.splice(Math.min(r.plan.length, r.i + 4), 0, { mode: 'solo', it: e.it, extra: true, L: e.L }); r.extra++; }
   save();
   r.lastWrong = kind === 'skip' ? '' : r.input;
   r.fixMsg = kind === 'skip' ? 'Bine că ai zis. Uite cum se face:' : pick(FIX_MSGS);
@@ -2111,7 +2159,7 @@ function soloTruc() {
   logAns(lvOf(r).id, e.it.q, r.input, false, now() - r.t0, true);
   // N-a răspuns la timp: calculul nu e încă învățat (profesorul, 2026-10-22). Harta află, iar calculul mai vine o dată.
   if (e.it.fk) famUpdate(e.it.fk.m, e.it.fk.k, { correct: false, dt: now() - r.t0 });
-  if (r.extra < 3) { r.plan.splice(Math.min(r.plan.length, r.i + 4), 0, { mode: 'solo', it: e.it, extra: true }); r.extra++; }
+  if (r.extra < 3) { r.plan.splice(Math.min(r.plan.length, r.i + 4), 0, { mode: 'solo', it: e.it, extra: true, L: e.L }); r.extra++; }
   save();
   if (e.counted) { r.stats.n++; e.counted = false; }
   r.combo = 0; updateCombo();
@@ -2119,6 +2167,7 @@ function soloTruc() {
   renderLevel();
 }
 function finishLevel() {
+  if (RUN && RUN.daily) { finishDaily(); return; }
   const r = RUN, L = lvOf(r), n = L.ns, rec = recordLevel(L, r.stats.ok, r.stats.fast), stars = rec.stars, prev = rec.prev;
   const bonus = 30 + 10 * stars; S.xp += bonus; r.stats.xp += bonus;
   today().r++;
@@ -2729,6 +2778,8 @@ document.addEventListener('click', e => {
     case 'wlocked': toast(worldLockText(d.w)); break;
     case 'train': startTrain(d.mode); break;
     case 'sprint': startSprint(); break;
+    case 'daily': startDaily(); break;
+    case 'dlocked': toast('Se deschide după primul nivel cu 2 stele.'); break;
     case 'test': startTest(); break;
     case 'retest': S.test = Object.assign({}, S.test, { done: false, partial: null }); save(); startTest(); break;
     case 'home': renderHome(); show('home'); break;

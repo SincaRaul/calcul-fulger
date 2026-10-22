@@ -270,6 +270,25 @@ ok(CF.SPRINT.map(p => p[0] * p[1]).join(',') === '14,30,24,36,42,40,28,63,18,64,
   ok(CF.nbFirst(7, c78) === 0 && CF.nbFirst(7, CF.nbCands(7, 9)) === 1 && CF.nbFirst(4, CF.nbCands(4, 2)) === 0 && CF.nbFirst(3, CF.nbCands(3, 4)) === 1, 'vecinul deschis la început');
   console.log(nb + ' ajutoare cu vecini verificate');
 }
+// ---- runda zilei: calcule amestecate din nivelurile trecute, întâi cele nevăzute de mult ----
+{
+  const s = CF.blankState(); CF.setS(s);
+  ok(CF.dailyPlan().length === 0, 'runda zilei e goală fără niveluri trecute');
+  const ids = CF.WORLDS.flatMap(w => w.levels.filter(L => !L.boss).map(L => L.id)).slice(0, 14);
+  ids.forEach(id => { s.lv[id] = { s: 2, p: 1, b: 8 }; });
+  const fresh = [ids[0], ids[1]], k = CF.dayKey();
+  fresh.forEach(id => s.log.push({ d: k, w: id, q: 'x', a: '1', c: 1, s: 2, h: 0 }));
+  for (let rep = 0; rep < 30; rep++) {
+    const plan = CF.dailyPlan(), qs = plan.map(e => e.it.q), per = {};
+    plan.forEach(e => { per[e.L.id] = (per[e.L.id] || 0) + 1; });
+    ok(plan.length === CF.DAILY_N && new Set(qs).size === qs.length, 'runda zilei: ' + CF.DAILY_N + ' calcule diferite');
+    ok(plan.every(e => e.mode === 'solo' && e.counted && !e.L.boss && ids.indexOf(e.L.id) >= 0), 'runda zilei: doar din nivelurile trecute');
+    ok(Object.values(per).every(n => n === 1) && fresh.every(id => !per[id]), 'runda zilei: câte unul pe nivel, fără cele jucate azi');
+    plan.forEach(e => checkItem(e.it, 'runda zilei ' + e.L.id + ' „' + e.it.q + '”', e.L.wid));
+  }
+  s.lv = { add10: { s: 2 }, addUp: { s: 3 } };
+  ok(CF.dailyPlan().length === CF.DAILY_N, 'runda zilei cu doar două niveluri are tot ' + CF.DAILY_N + ' calcule');
+}
 // Răspunsul se verifică doar la OK: nicio căsuță nu primește singură răspunsul corect.
 ok(js.indexOf("'auto'") < 0 && !/input\.length === fmt/.test(js), 'răspunsul se primește singur, fără OK');
 
