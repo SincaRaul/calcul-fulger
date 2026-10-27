@@ -116,18 +116,46 @@ ok(nLevels === 39, 'sunt ' + nLevels + ' niveluri, nu 39');
 }
 
 // ---- 3. planul unui nivel și stelele ----
+const s3 = CF.blankState(); CF.setS(s3);
 CF.WORLDS.forEach(w => w.levels.forEach(L => {
-  const p1 = CF.levelPlan(L, !L.boss), p2 = CF.levelPlan(L, false), qs = p1.map(e => e.it.q);
+  // p2 = încercarea de după un nivel trecut (varianta scurtă); pf = după un nivel picat (tot ajutorul, 2026-10-27)
+  s3.lv[L.id] = { s: 1, p: 1, b: 0 }; const pf = CF.levelPlan(L, false);
+  s3.lv[L.id] = { s: 2, p: 1, b: 8 }; const p2 = CF.levelPlan(L, false);
+  delete s3.lv[L.id];
+  const p1 = CF.levelPlan(L, !L.boss), qs = p1.map(e => e.it.q);
   ok(qs.every((q, i) => !i || q !== qs[i - 1]), L.id + ': același calcul de două ori la rând');
-  if (L.boss) { ok(p1.length === 20 && p1.every(e => e.mode === 'solo' && e.counted), L.id + ': nivelul final are 20 singur'); ok(new Set(qs).size >= 16, L.id + ': prea puține calcule diferite la final (' + new Set(qs).size + ')'); return; }
+  if (L.boss) {
+    ok(p1.length === 20 && p1.every(e => e.mode === 'solo' && e.counted), L.id + ': nivelul final are 20 singur'); ok(new Set(qs).size >= 16, L.id + ': prea puține calcule diferite la final (' + new Set(qs).size + ')');
+    // nivelul final amestecat: exact câte calcule din fiecare nivel, fiecare cu timpul nivelului lui
+    if (L.mix) {
+      const per = {}; p1.forEach(e => { per[e.it.src] = (per[e.it.src] || 0) + 1; ok(CF.fastOf(L, e.it) === CF.LVK[e.it.src].fast, L.id + ': timpul calculului din ' + e.it.src); });
+      ok(Object.keys(L.mix).every(id => per[id] === L.mix[id]) && Object.keys(per).length === Object.keys(L.mix).length, L.id + ': amestecul nu e ' + JSON.stringify(L.mix) + ' ci ' + JSON.stringify(per));
+      ok(Object.values(L.mix).reduce((a, b) => a + b, 0) === 20, L.id + ': amestecul nu are 20 de calcule');
+    }
+    return;
+  }
+  ok(pf.length === L.nf + L.ns && pf.slice(0, L.nf).every((e, i) => e.mode === 'fill' && e.blanks === Math.min(e.it.slots.length, i + 1)), L.id + ': după un nivel picat, toate cele ' + L.nf + ' de completat');
+  if (L.demos) ok(p1[0].mode === 'demo' && p1[1].mode === 'demo', L.id + ': exemplele alese');
   const solo = new Set(p1.filter(e => e.mode === 'solo').map(e => e.it.q)), f = L.nf;
   ok(solo.size >= 6, L.id + ': doar ' + solo.size + ' calcule diferite la „singur”');
   ok(p1.length === 17, L.id + ': prima dată 17 pași, nu ' + p1.length);
   ok(p1.slice(0, 2).every(e => e.mode === 'demo') && p1.slice(2, 2 + f).every(e => e.mode === 'fill') && p1.slice(2 + f).every(e => e.mode === 'solo' && e.counted) && p1.length - 2 - f === L.ns, L.id + ': ordinea exemple, completare, singur');
   p1.slice(2, 2 + f).forEach((e, i) => ok(e.blanks === Math.min(e.it.slots.length, i + 1), L.id + ': căsuțele goale cresc câte una'));
   ok(p1[1 + f].blanks === p1[1 + f].it.slots.length, L.id + ': ultimul de completat are toate căsuțele goale');
-  ok(p2.length === 2 + L.ns && p2.slice(0, 2).every(e => e.mode === 'fill' && e.blanks === e.it.slots.length), L.id + ': a doua oară 2 de completat și ' + L.ns + ' singur');
+  ok(p2.length === 2 + L.ns && p2.slice(0, 2).every(e => e.mode === 'fill' && e.blanks === e.it.slots.length), L.id + ': după un nivel trecut, 2 de completat și ' + L.ns + ' singur');
 }));
+// exemplele arată ce spune regula (2026-10-27): minus ori minus, + (−), paranteza cu înmulțire, ordinea de la stânga
+for (let rep = 0; rep < 200; rep++) {
+  const d = id => CF.LVK[id].demos();
+  const n4 = d('neg4'); ok((n4[0].q.match(/−/g) || []).length === 2 && n4[0].ans > 0 && n4[1].ans < 0, 'semnele la ·: exemplele ' + n4.map(x => x.q).join(' / '));
+  const n6 = d('neg6'); ok(/ − \(−/.test(n6[0].q) && / \+ \(−/.test(n6[1].q), 'două semne lipite: exemplele ' + n6.map(x => x.q).join(' / '));
+  const o4 = d('ord4'); ok(o4[0].q.indexOf('·') < 0 && /· \(/.test(o4[1].q), 'parantezele: exemplele ' + o4.map(x => x.q).join(' / '));
+  const o5 = d('ord5'); ok(/\(/.test(o5[0].q) && !/\(/.test(o5[1].q), 'cu numere negative: exemplele ' + o5.map(x => x.q).join(' / '));
+  // fără calcule nepredate: produsul cu paranteza e din tablă (cel mult 9 · 10), câtul de la stânga e cel mult 10
+  const p = CF.LVK.ord4.make(); const m = /(\d+) · \((\d+) ([+−]) (\d+)\)/.exec(p.q);
+  if (m) { const inner = m[3] === '+' ? +m[2] + +m[4] : +m[2] - +m[4]; ok(inner >= 2 && inner <= 10, 'parantezele: ' + p.q + ' cere ' + m[1] + ' · ' + inner); }
+  const lr = /^(\d) · (\d) : (\d)$/.exec(CF.LVK.ord3.make().q); if (lr) ok(lr[1] * lr[2] / lr[3] <= 10, 'de la stânga: câtul ' + lr[0]);
+}
 const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.WORLDK.mul.levels.find(L => L.boss);
 [[8, 6, 3], [8, 5, 2], [7, 7, 2], [6, 0, 2], [5, 5, 1], [0, 0, 1]].forEach(t => ok(CF.starsFor(lv8, t[0], t[1]) === t[2], 'stele din 8 pentru ' + t[0] + ' corecte, ' + t[1] + ' fulgere'));
 [[12, 9, 3], [12, 8, 2], [11, 11, 2], [9, 0, 2], [8, 8, 1], [0, 0, 1]].forEach(t => ok(CF.starsFor(lv12, t[0], t[1]) === t[2], 'stele din 12 pentru ' + t[0] + ' corecte, ' + t[1] + ' fulgere'));
@@ -181,7 +209,16 @@ const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.W
 {
   const s = CF.blankState(); CF.setS(s);
   ok(CF.testList().length === 33, 'testul are ' + CF.testList().length + ' tipuri, nu 33');
-  ok(CF.testVerdict(false, false, 1) === 'x' && CF.testVerdict(true, true, 1) === 'k' && CF.testVerdict(true, false, 1) === null && CF.testVerdict(true, false, 2) === 's' && CF.testVerdict(true, true, 2) === 'k', 'verdictele testului');
+  ok(CF.testVerdict([{ c: 0, f: 0 }]) === 'x' && CF.testVerdict([{ c: 1, f: 1 }, { c: 0, f: 0 }]) === 'x' && CF.testVerdict([{ c: 1, f: 1 }, { c: 1, f: 1 }]) === 'k' && CF.testVerdict([{ c: 1, f: 0 }, { c: 1, f: 1 }]) === 's', 'verdictele testului (două întrebări)');
+  // două întrebări diferite pe nivel, din partea grea (2026-10-27)
+  CF.WORLDS.forEach(w => w.levels.filter(L => !L.boss).forEach(L => { for (let rep = 0; rep < 30; rep++) {
+    const a = CF.testPair(L); ok(a.length === 2 && a[0].q !== a[1].q, L.id + ': testul pune două întrebări diferite');
+    a.forEach(it => checkItem(it, 'test ' + L.id + ' „' + it.q + '”', w.id));
+    if (w.id === 'mul') a.forEach(it => { const xy = CF.mulXY(it.q), n = L.id === 'mulP' ? xy[0] : +L.id.slice(3), other = xy[0] === n ? xy[1] : xy[0]; ok(other >= 6, L.id + ': la test, calculul ușor ' + it.q); });
+    if (L.id === 'neg4') ok(a.some(it => (it.q.match(/−/g) || []).length === 2), 'test neg4: fără minus ori minus');
+    if (L.id === 'big5') ok(a.every(it => { const m = /(\d+) − (\d+)/.exec(it.q); return m && m[2] % 10 > m[1] % 10; }), 'test big5: fără împrumut ' + a.map(x => x.q).join(' / '));
+  } }));
+  ok(CF.mergeTest({ a: 'k', b: 's', c: 'x' }, { a: 'x', b: 'k', c: '-' }).a === 'k' && CF.mergeTest({ b: 's' }, { b: 'k' }).b === 'k' && CF.mergeTest({ c: 'x' }, { c: '-' }).c === 'x', 'testul refăcut păstrează cel mai bun verdict');
   const res = { mul2: 'k', mul4: 'x', mul8: 'k', add10: 'k', addUp: 's' };
   CF.applyTest(res);
   ok(s.lv.mul2.s === 2 && s.lv.mul8.s === 2 && !s.lv.mul4 && !s.lv.addUp, 'testul dă 2 stele doar nivelurilor știute repede');
@@ -193,6 +230,23 @@ const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.W
     ok(CF.worldPassed('add') && CF.worldOpen('mul') && CF.worldOpen('big') && !CF.worldPassed('big') && !CF.worldOpen('div') && !CF.worldOpen('neg'), 'testul deschide lumile știute (și încet), nu și pe cele cu un tip greșit');
     s2.test.done = false;
     ok(!CF.worldOpen('mul'), 'un test neterminat nu deschide lumi');
+    // o lume știută la test e deschisă chiar dacă lumea de dinainte nu e (2026-10-27)
+    const r3 = { add10: 'x' }; CF.WORLDK.mul.levels.filter(L => !L.boss).forEach(L => { r3[L.id] = 's'; });
+    s2.test = { done: true, date: '2026-10-27', res: r3, partial: null };
+    ok(CF.worldOpen('mul') && CF.worldOpen('div') && !CF.worldOpen('big'), 'tabla știută la test: tabla și împărțirile deschise, numerele mari nu');
+    ok(CF.dailyLevels().length === 9, 'nivelurile știute încet la test intră în runda zilei');
+    CF.setS(s);
+  }
+  // butonul mare: după lumea adunărilor, la tabla lui 2, nu înapoi la a treia stea (2026-10-27)
+  {
+    const s4 = CF.blankState(); CF.setS(s4);
+    CF.WORLDK.add.levels.forEach(L => { s4.lv[L.id] = { s: 2, p: 1, b: 16 }; }); s4.last = 'add';
+    let pk = CF.ctaPick(); ok(pk && pk.wid === 'mul' && pk.li === 0, 'butonul mare după adunări: ' + JSON.stringify(pk));
+    s4.lv.mul2 = { s: 2, p: 1, b: 9 }; s4.last = 'big';
+    pk = CF.ctaPick(); ok(pk && pk.wid === 'big' && pk.li === 0, 'butonul mare rămâne în lumea jucată ultima dată: ' + JSON.stringify(pk));
+    const s5 = CF.blankState(); CF.setS(s5); const all = {}; CF.testList().forEach(t => { all[CF.WORLDK[t.wid].levels[t.li].id] = 's'; });
+    s5.test = { done: true, date: '2026-10-27', res: all, partial: null }; CF.applyTest(all);
+    ok(CF.WORLDS.every(w => CF.worldOpen(w.id)) && CF.ctaPick() !== null, 'test corect, dar încet: toate lumile deschise, butonul mare are un nivel');
     CF.setS(s);
   }
   s.test = { done: true, date: '2026-10-01', res, partial: null }; s.name = 'Andrei';
@@ -245,6 +299,51 @@ for (let rep = 0; rep < 1500; rep++) {
   CF.famUpdate('mul', '7x8', { correct: false, dt: 1000 }); ok(f.l === 1, 'greșit: portocaliu');
 }
 
+// ---- 7b. sprinturile, runda de exersat, progresul stricat (2026-10-27) ----
+{
+  const s = CF.blankState(); CF.setS(s);
+  ok(!CF.sprintsOpen().length && !CF.sprintNeeded(), 'la început: niciun sprint, ținta zilei fără sprint');
+  s.lv.add10 = { s: 2, p: 1, b: 7 };
+  ok(CF.sprintsOpen().join(',') === 'add' && !CF.sprintNeeded(), 'după perechile lui 10: sprintul adunărilor, ținta tot fără sprint');
+  for (let rep = 0; rep < 50; rep++) { const it = CF.sprintItems('add'); ok(it.length === 40 && it.every((x, i) => /^10 − \d$/.test(x.q) && (!i || x.q !== it[i - 1].q)), 'sprintul adunărilor: doar perechile lui 10, fără două la rând'); }
+  CF.WORLDK.add.levels.forEach(L => { s.lv[L.id] = { s: 2, p: 1, b: 16 }; });
+  ok(CF.sprintNeeded() && CF.sprintsOpen().indexOf('mul') < 0, 'lumea adunărilor trecută: ținta zilei are sprint; tabla încă fără sprint');
+  CF.WORLDK.mul.levels.forEach(L => { s.lv[L.id] = { s: 2, p: 1, b: 16 }; });
+  const paper = CF.sprintItems('mul');
+  ok(paper.length === 30 && paper.every((x, i) => x.q === CF.SPRINT[i][0] + ' · ' + CF.SPRINT[i][1] && x.ans === CF.SPRINT[i][0] * CF.SPRINT[i][1]), 'toată tabla trecută: sprintul e foaia');
+  ok(CF.sprintsOpen().indexOf('mix') >= 0, 'două lumi trecute: sprintul amestecat');
+  const s2 = CF.blankState(); CF.setS(s2); s2.lv.add10 = { s: 2 }; s2.lv.addUp = { s: 2 }; s2.lv.addDown = { s: 2 }; s2.lv.addB = { s: 2 }; s2.lv.mul2 = { s: 2, p: 1 };
+  ok(CF.sprintItems('mul').every(x => /(^2 ·)|(· 2$)/.test(x.q)), 'doar tabla lui 2 trecută: sprintul are doar ·2');
+  s2.sprint = [{ d: '2026-10-20', s: 18 }, { d: '2026-10-21', s: 22, w: 'add' }, { d: '2026-10-22', s: 9, w: 'add' }];
+  ok(CF.sprintRecord('mul') === 18 && CF.sprintRecord('add') === 22, 'recordurile sunt pe sprint (cele vechi erau cu tabla)');
+  // runda de exersat de după un nivel final picat
+  for (let rep = 0; rep < 50; rep++) {
+    const a = CF.practiceItems(CF.LVK.bigB, [{ src: 'big5' }]); ok(a.length === CF.PRACTICE_N && a.every(it => it.src === 'big5' && / − /.test(it.q)), 'exersat: calcule de felul celor greșite');
+    const b = CF.practiceItems(CF.LVK.mulB, [{ fk: '7x8' }, { fk: '6x9' }]); ok(b.every(it => ['7 · 8', '8 · 7', '6 · 9', '9 · 6'].indexOf(it.q) >= 0) && b.every((x, i) => !i || x.q !== b[i - 1].q), 'exersat la tablă: exact calculele greșite');
+    [a, b].forEach(l => l.forEach(it => checkItem(it, 'exersat „' + it.q + '”', /·/.test(it.q) ? 'mul' : 'big')));
+  }
+}
+{ // a doua verificare GPT (2026-10-27): amestecul fix la nivelul final, sprinturi cât să bată recordul, fără dubluri lipite
+  const s = CF.blankState(); CF.setS(s);
+  CF.WORLDS.forEach(w => w.levels.filter(L => L.mix).forEach(L => { for (let rep = 0; rep < 300; rep++) {
+    const per = {}; CF.levelPlan(L, false).forEach(e => { per[e.it.src] = (per[e.it.src] || 0) + 1; });
+    ok(Object.keys(L.mix).every(id => per[id] === L.mix[id]), L.id + ': amestecul ' + JSON.stringify(per));
+  } }));
+  s.lv.add10 = { s: 2 }; s.sprint = [{ d: '2026-10-20', s: 45, w: 'add' }];
+  ok(CF.sprintItems('add').length >= 46, 'sprintul are destule calcule pentru recordul + 1');
+  for (let rep = 0; rep < 500; rep++) { const p = CF.dailyPlan(); ok(p.length === CF.DAILY_N && p.every((e, i) => !i || e.it.q !== p[i - 1].it.q), 'runda zilei cu un singur nivel: calcule identice lipite'); }
+  // ultima încercare picată: tot ajutorul, chiar dacă nivelul fusese trecut
+  const L = CF.LVK.big4; s.lv.big4 = { s: 2, p: 2, b: 7 }; CF.recordLevel(L, 3, 0);
+  const pf = CF.levelPlan(L, false); ok(pf.filter(e => e.mode === 'fill').length === L.nf, 'după o încercare picată, la un nivel trecut: tot ajutorul');
+  CF.recordLevel(L, 8, 8); ok(CF.levelPlan(L, false).filter(e => e.mode === 'fill').length === 2, 'după o încercare reușită: varianta scurtă');
+  const bad = CF.blankState(); bad.sprint = [{ d: '2026-10-20', s: 'Infinity' }, { s: 4 }];
+  const fx = CF.repair(JSON.parse(JSON.stringify(bad))); ok(fx.sprint.length === 1 && Number.isFinite(fx.sprint[0].s) && fx.sprint[0].s <= 200, 'sprintul stricat se repară');
+}
+{ // un progres stricat se repară, nu blochează jocul (rangul cu „Infinity” bucla la nesfârșit)
+  const bad = CF.blankState(); bad.xp = 'Infinity'; bad.days = { '2026-10-20': { r: 1 }, x: null }; bad.lv = { add10: { s: 9 }, addUp: 'x' }; bad.sprint = [null, { d: '2026-10-20', s: 3 }];
+  const fixed = CF.repair(JSON.parse(JSON.stringify(bad)));
+  ok(Number.isFinite(fixed.xp) && CF.levelOf(fixed.xp) < 200 && fixed.days['2026-10-20'].q === 0 && !fixed.days.x && fixed.lv.add10.s === 3 && !fixed.lv.addUp && fixed.sprint.length === 1, 'progresul stricat se repară');
+}
 // ---- 8. gramatica și sprintul ----
 ok(CF.nr(1, 'zi', 'zile') === '1 zi' && CF.nr(19, 'zi', 'zile') === '19 zile' && CF.nr(20, 'zi', 'zile') === '20 de zile' && CF.nr(101, 'zi', 'zile') === '101 zile', 'gramatica numerelor');
 ok(CF.rankName(1) === 'Începător' && CF.rankName(12) === 'Legendă 3', 'rangurile');

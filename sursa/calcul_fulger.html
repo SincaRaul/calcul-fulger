@@ -227,6 +227,7 @@ button.cell:active{transform:scale(.94)}
 .box.ok{border-color:var(--good);color:var(--good)}
 .box.fast{border-color:var(--bolt);color:var(--bolt-ink);box-shadow:0 0 0 5px var(--bolt-soft)}
 .box.bad{border-color:var(--warn);color:var(--warn)}
+.box.wait{border-style:dashed;border-color:var(--line);color:var(--muted);background:transparent}
 .shake{animation:shake .38s}
 .pop{animation:pop .45s ease}
 .fb{min-height:26px;text-align:center;font-weight:600;font-size:19px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
@@ -818,8 +819,9 @@ function under10Item() {
      SL(T, 'Cât face ' + n + ' ' + MINUS + ' ' + u + '?', n + ' ' + MINUS + ' ' + u + ' = ' + T + '.'),
      SL(ans, 'Cât face ' + T + ' ' + MINUS + ' ' + more + '?', T + ' ' + MINUS + ' ' + more + ' = ' + ans + '.', minusHelp(T, more))], { t: 'jumps', start: n, steps: [-u, -more] }, null);
 }
-function twoAddItem() {
-  const carry = Math.random() < 0.7; let a, b;
+function twoAddItem(carry) {
+  if (carry === undefined) carry = Math.random() < 0.7;
+  let a, b;
   do { a = rnd(13, 79); b = rnd(13, 79); } while (b % 10 === 0 || (carry ? a % 10 + b % 10 < 10 : a % 10 + b % 10 >= 10));
   const t = b - b % 10, u = b % 10, T = a + t, ans = a + b, q = a + ' + ' + b;
   return mk(q, ans, [[q + ' = ' + a + ' + ', { s: 0 }, ' + ', { s: 1 }], ['= ', { s: 2 }, ' + ', { m: 1 }, ' = ', { s: 3 }]],
@@ -828,8 +830,9 @@ function twoAddItem() {
      SL(T, 'Cât face ' + a + ' + ' + t + '? Aduni doar zecile.', 'Întâi zecile: ' + a + ' + ' + t + ' = ' + T + '.'),
      SL(ans, 'Cât face ' + T + ' + ' + u + '?', 'Apoi unitățile: ' + T + ' + ' + u + ' = ' + ans + '.', plusHelp(T, u))], { t: 'jumps', start: a, steps: [t, u] }, null);
 }
-function twoSubItem() {
-  const borrow = Math.random() < 0.7; let a, b;
+function twoSubItem(borrow) {
+  if (borrow === undefined) borrow = Math.random() < 0.7;
+  let a, b;
   do { a = rnd(31, 99); b = rnd(12, a - 6); } while (b % 10 === 0 || (borrow ? b % 10 <= a % 10 : b % 10 > a % 10));
   const t = b - b % 10, u = b % 10, T = a - t, ans = a - b, q = a + ' ' + MINUS + ' ' + b;
   return mk(q, ans, [[q + ' = ' + a + ' ' + MINUS + ' ', { s: 0 }, ' ' + MINUS + ' ', { s: 1 }], ['= ', { s: 2 }, ' ' + MINUS + ' ', { m: 1 }, ' = ', { s: 3 }]],
@@ -865,9 +868,11 @@ function doubleDebtItem() {
     { t: 'line', from: -a, to: ans }, null);
 }
 function signPool() { const known = FAM.filter(f => S.modes.mul.f[f.k].l >= 3); return known.length >= 6 ? known : FAM.filter(f => f.a === 2 || f.b === 2 || f.a === 5 || f.b === 5); }
-function signItem(op) {
+// signs = [s1, s2] alege semnele (pentru exemple și test); altfel sunt la întâmplare, cel puțin un minus.
+function signItem(op, signs) {
   const f = pick(signPool()); let x = f.a, y = f.b; if (Math.random() < 0.5) { const t = x; x = y; y = t; }
   let s1 = pick([1, -1]), s2 = pick([1, -1]); if (s1 === 1 && s2 === 1) { if (Math.random() < 0.5) s1 = -1; else s2 = -1; }
+  if (signs) { s1 = signs[0]; s2 = signs[1]; }
   const same = s1 === s2, sg = same ? '+' : MINUS, w = n => (n > 0 ? 'plus' : 'minus');
   let q, ans, abs, absTxt;
   if (op === 'mul') { const X = s1 * x, Y = s2 * y; q = fmt(X) + ' ' + DOT + ' ' + par(Y); ans = X * Y; abs = x * y; absTxt = x + ' ' + DOT + ' ' + y; }
@@ -877,8 +882,10 @@ function signItem(op) {
      SL(abs, 'Cât face ' + absTxt + '?', absTxt + ' = ' + abs + '.'),
      SL(ans, same ? 'Rezultatul e pozitiv: scrie numărul fără minus.' : 'Pune minus în fața numărului.', 'Deci rezultatul e ' + fmt(ans) + '.')], null, null);
 }
-function twoSignsItem() {
-  const a = rnd(1, 10), b = rnd(1, 10), form = rnd(1, 4), first = form === 1 || form === 3 ? a : -a;
+// form: 1 = 5 − (−2), 2 = −5 − (−2), 3 = 5 + (−2), 4 = −5 + (−2); fără form, la întâmplare.
+function twoSignsItem(form) {
+  if (!form) form = rnd(1, 4);
+  const a = rnd(1, 10), b = rnd(1, 10), first = form === 1 || form === 3 ? a : -a;
   let q, sg, ans;
   if (form === 1) { q = a + ' ' + MINUS + ' (' + MINUS + b + ')'; sg = '+'; ans = a + b; }
   else if (form === 2) { q = MINUS + a + ' ' + MINUS + ' (' + MINUS + b + ')'; sg = '+'; ans = b - a; }
@@ -911,34 +918,44 @@ function ordTwoItem() {
      SL(ans, 'Acum cât face ' + A.v + ' ' + op + ' ' + B.v + '?', A.v + ' ' + op + ' ' + B.v + ' = ' + ans + '.')], null, null);
 }
 // De la stânga la dreapta: 24 : 4 · 2 (nu 24 : 8), 6 · 4 : 3 și 20 − 8 + 3 (nu 20 − 11).
-function ordLRItem() {
-  const form = rnd(1, 3); let left, first, rest, ans;
+// form: 1 = 24 : 4 · 2, 2 = 6 · 4 : 3, 3 = 20 − 8 + 3; fără form, la întâmplare.
+// La forma 2 câtul rămâne în tablă (cel mult 10): 8 · 9 : 3 = 72 : 3 cere o împărțire nepredată.
+function ordLRItem(form) {
+  if (!form) form = rnd(1, 3);
+  let left, first, rest, ans;
   if (form === 1) { const d = rnd(2, 9), k = rnd(2, 9), e = rnd(2, 9); left = (d * k) + ' : ' + d; first = k; rest = ' ' + DOT + ' ' + e; ans = k * e; }
-  else if (form === 2) { let x, y, d; do { x = rnd(2, 9); y = rnd(2, 9); d = rnd(2, 9); } while ((x * y) % d || d === y || d === x); left = x + ' ' + DOT + ' ' + y; first = x * y; rest = ' : ' + d; ans = first / d; }
+  else if (form === 2) { let x, y, d; do { x = rnd(2, 9); y = rnd(2, 9); d = rnd(2, 9); } while ((x * y) % d || d === y || d === x || (x * y) / d > 10); left = x + ' ' + DOT + ' ' + y; first = x * y; rest = ' : ' + d; ans = first / d; }
   else { const a = rnd(12, 60), b = rnd(2, a - 2), c = rnd(2, 30); left = a + ' ' + MINUS + ' ' + b; first = a - b; rest = ' + ' + c; ans = first + c; }
   const q = left + rest;
   return mk(q, ans, [[q + ' = ', { s: 0 }, rest], ['= ', { s: 1 }]],
     [SL(first, 'De la stânga la dreapta: cât face ' + left + '?', 'Întâi ' + left + ' = ' + first + ', pentru că e în stânga.'),
      SL(ans, 'Acum cât face ' + first + rest + '?', first + rest + ' = ' + ans + '.')], null, null);
 }
-function ordParItem() {
-  const b = rnd(2, 20), c = rnd(2, 20), inPlus = Math.random() < 0.5 || b <= c, inner = inPlus ? b + c : b - c;
+// mult: true = 52 − 2 · (25 − 5), false = 31 − (8 + 9); fără mult, la întâmplare (6 din 10 cu înmulțire).
+// Cu înmulțire, paranteza dă cel mult 10, ca produsul să fie din tablă (nu 4 · 34).
+function ordParItem(mult) {
+  if (mult === undefined) mult = Math.random() >= 0.4;
+  let b, c, inPlus, inner;
+  if (mult) { inner = rnd(2, 10); inPlus = Math.random() < 0.5 && inner >= 4; if (inPlus) { b = rnd(2, inner - 2); c = inner - b; } else { c = rnd(2, 15); b = c + inner; } }
+  else { b = rnd(2, 20); c = rnd(2, 20); inPlus = Math.random() < 0.5 || b <= c; inner = inPlus ? b + c : b - c; }
   const par2 = '(' + b + ' ' + (inPlus ? '+' : MINUS) + ' ' + c + ')', plus = Math.random() < 0.4;
   const sl0 = SL(inner, 'Parantezele întâi: cât face ' + par2.slice(1, -1) + '?', 'Întâi parantezele: ' + par2.slice(1, -1) + ' = ' + inner + '.');
-  if (Math.random() < 0.4) {
+  if (!mult) {
     const a = plus ? rnd(2, 40) : rnd(inner, inner + 40), ans = plus ? a + inner : a - inner, op = plus ? '+' : MINUS, q = a + ' ' + op + ' ' + par2;
     return mk(q, ans, [[q + ' = ' + a + ' ' + op + ' ', { s: 0 }], ['= ', { s: 1 }]],
       [sl0, SL(ans, 'Acum cât face ' + a + ' ' + op + ' ' + inner + '?', a + ' ' + op + ' ' + inner + ' = ' + ans + '.')], null, null);
   }
-  const k = inner > 12 ? rnd(2, 4) : rnd(2, 9), prod = k * inner, a = plus ? rnd(2, 40) : rnd(prod, prod + 40), ans = plus ? a + prod : a - prod, op = plus ? '+' : MINUS;
+  const k = rnd(2, 9), prod = k * inner, a = plus ? rnd(2, 40) : rnd(prod, prod + 40), ans = plus ? a + prod : a - prod, op = plus ? '+' : MINUS;
   const q = a + ' ' + op + ' ' + k + ' ' + DOT + ' ' + par2;
   return mk(q, ans, [[q + ' = ' + a + ' ' + op + ' ' + k + ' ' + DOT + ' ', { s: 0 }], ['= ' + a + ' ' + op + ' ', { s: 1 }], ['= ', { s: 2 }]],
     [sl0, SL(prod, 'Înmulțirea înaintea ' + (plus ? 'adunării' : 'scăderii') + ': cât face ' + k + ' ' + DOT + ' ' + inner + '?', 'Apoi ' + k + ' ' + DOT + ' ' + inner + ' = ' + prod + '.'),
      SL(ans, 'Acum cât face ' + a + ' ' + op + ' ' + prod + '?', a + ' ' + op + ' ' + prod + ' = ' + ans + '.')], null, null);
 }
 // Cu semne: 3 − 2 · (1 − 5) = 3 − 2 · (−4) = 3 + 8 și 12 − 4 · 5 = 12 − 20 = −8.
-function ordNegItem() {
-  if (Math.random() < 0.3) {
+// form: 'par' = 3 − 2 · (1 − 5), 'prod' = 12 − 4 · 5; fără form, la întâmplare (7 din 10 cu paranteză).
+function ordNegItem(form) {
+  if (!form) form = Math.random() < 0.3 ? 'prod' : 'par';
+  if (form === 'prod') {
     const x = rnd(3, 9), y = rnd(3, 9), prod = x * y, a = rnd(1, prod - 1), ans = a - prod, q = a + ' ' + MINUS + ' ' + x + ' ' + DOT + ' ' + y;
     return mk(q, ans, [[q + ' = ' + a + ' ' + MINUS + ' ', { s: 0 }], ['= ', { s: 1 }]],
       [SL(prod, 'Cât face ' + x + ' ' + DOT + ' ' + y + '? Asta se face întâi.', 'Întâi ' + x + ' ' + DOT + ' ' + y + ' = ' + prod + '.'),
@@ -970,54 +987,64 @@ const MUL_RULE = {
 const MUL_PRAISE = { 2: ['Ai făcut dublul corect!'], 4: ['Dublul, de două ori. Perfect!'], 8: ['Trei dubluri la rând. Tare!'], 9: ['Trucul lui 9 merge!'], 5: ['Jumătate din zeci. Exact!'], 3: ['Dublul, plus încă o dată. Bravo!'], 6: ['Trucul lui 6, corect!'], 7: ['Cinci plus doi. Exact!'] };
 // La tablă, trucul e doar un pod: 2 exemple și 3 de completat (nf), apoi 12 din memorie (ns).
 // Celelalte lumi: 7 de completat și 8 singur. Pătratele se țin minte și sunt vecini buni.
+// hard = calculele grele ale nivelului: din ele vin cele 2 întrebări de la testul de pornire (2026-10-27).
+// test = cele 2 întrebări, când trebuie să fie de feluri diferite. demos = cele 2 exemple, când regula are două forme.
+// mix = nivelul final amestecă nivelurile lumii, cu câte calcule din fiecare; fiecare calcul are timpul nivelului lui.
+const HARD_K = () => shuffle([6, 7, 8, 9]);
 const WORLDS = [
   { id: 'mul', name: 'Tabla înmulțirii', tile: '7' + DOT + '8', levels: MUL_ORDER.map(n => ({
       id: 'mul' + n, name: 'Tabla lui ' + n, short: DOT + n, ex: MUL_EX[n], rule: MUL_RULE[n], praise: MUL_PRAISE[n], fast: 4000, nf: 3, ns: 12,
-      pool: () => shuffle(range(2, 9)).map(k => ({ k, flip: Math.random() < 0.5 })), make: p => mulItem(n, p.k, p.flip) }))
+      pool: () => shuffle(range(2, 9)).map(k => ({ k, flip: Math.random() < 0.5 })), hard: () => HARD_K().map(k => ({ k, flip: Math.random() < 0.5 })), make: p => mulItem(n, p.k, p.flip) }))
     .concat([{ id: 'mulP', name: 'Pătratele', short: 'pătratele', ex: '7 · 7 = 49', fast: 4000, nf: 3, ns: 12, praise: ['Pătratul, pe de rost!'],
       rule: 'Pătratele: un număr înmulțit cu el însuși. 2 · 2 = 4, 3 · 3 = 9, 4 · 4 = 16 și tot așa, până la 9 · 9 = 81. Pe ele le ții minte. Sunt vecini buni: știi 7 · 7 = 49, deci 7 · 8 = 49 + 7 = 56.',
-      pool: () => shuffle(range(2, 9)).map(k => ({ k })), make: p => mulItem(p.k, p.k, false) },
-    { id: 'mulB', name: 'Toată tabla', short: 'toată tabla', boss: true, trophy: 'Stăpânul tablei', ex: 'toate cele 36 de calcule, amestecate', fast: 4000,
+      pool: () => shuffle(range(2, 9)).map(k => ({ k })), hard: () => HARD_K().map(k => ({ k })), make: p => mulItem(p.k, p.k, false) },
+    { id: 'mulB', name: 'Toată tabla', short: 'toată tabla', boss: true, trophy: 'Stăpânul tablei', ex: '20 de calcule din toată tabla, amestecate', fast: 4000,
       rule: 'Nivelul final: toată tabla, amestecată. La fiecare calcul folosești trucul potrivit.',
       pool: () => shuffle(FAM).map(f => ({ f, flip: Math.random() < 0.5 })), make: p => { const t = trickOf(p.f.a, p.f.b); return mulItem(t.f, t.g, p.flip); } }]) },
   { id: 'div', name: 'Împărțiri', tile: '56 : 8', levels: [
-    { id: 'div2', name: 'Împărțirea la 2', short: ':2', ex: '14 : 2', fast: 5000, rule: 'Împărțirea e înmulțirea pe dos. 14 : 2 = ? înseamnă: ce număr, dublat, dă 14? E 7.', pool: () => shuffle(range(2, 9)), make: k => divItem(2, k) },
-    { id: 'div10', name: 'Împărțirea la 10', short: ':10', ex: '70 : 10', fast: 4000, rule: 'La : 10 tai zeroul de la sfârșit. 70 : 10 = 7 și 120 : 10 = 12.', pool: () => shuffle(range(2, 15)), make: k => divItem(10, k) },
-    { id: 'div5', name: 'Împărțirea la 5', short: ':5', ex: '35 : 5', fast: 6000, rule: 'La : 5 dublezi, apoi tai zeroul. 35 : 5: dublul lui 35 e 70, iar 70 : 10 = 7.', pool: () => shuffle(range(2, 9)), make: k => divItem(5, k) },
-    { id: 'div48', name: 'Împărțirea la 4 și la 8', short: ':4 și :8', ex: '28 : 4', fast: 6000, rule: ':4 înseamnă jumătate, apoi încă o dată jumătate. :8 înseamnă de trei ori jumătate. 28 : 4: 28 → 14 → 7.', pool: () => shuffle([4, 8].flatMap(d => range(2, 9).map(k => ({ d, k })))), make: p => divItem(p.d, p.k) },
-    { id: 'divX', name: 'La 3, 6, 7 și 9', short: ':3 :6 :7 :9', ex: '54 : 6', fast: 6000, rule: 'Gândești invers: 54 : 6 = ? înseamnă 6 · ? = 54. Spui tabla lui 6 până ajungi la 54: e 9.', pool: () => shuffle([3, 6, 7, 9].flatMap(d => range(2, 9).map(k => ({ d, k })))), make: p => divItem(p.d, p.k) },
-    { id: 'divB', name: 'Toate împărțirile', short: 'toate', boss: true, trophy: 'Stăpânul împărțirilor', ex: 'din toată tabla, amestecate', fast: 5000, rule: 'Nivelul final: împărțiri din toată tabla, amestecate.', pool: () => shuffle(FAM).map(f => (Math.random() < 0.5 ? { d: f.a, k: f.b } : { d: f.b, k: f.a })), make: p => divItem(p.d, p.k) },
+    { id: 'div2', name: 'Împărțirea la 2', short: ':2', ex: '14 : 2', fast: 5000, rule: 'Împărțirea e înmulțirea pe dos. 14 : 2 = ? înseamnă: ce număr, dublat, dă 14? E 7.', pool: () => shuffle(range(2, 9)), hard: HARD_K, make: k => divItem(2, k) },
+    { id: 'div10', name: 'Împărțirea la 10', short: ':10', ex: '70 : 10', fast: 4000, rule: 'La : 10 tai zeroul de la sfârșit. 70 : 10 = 7 și 120 : 10 = 12.', pool: () => shuffle(range(2, 15)), hard: () => shuffle(range(10, 15)), make: k => divItem(10, k) },
+    { id: 'div5', name: 'Împărțirea la 5', short: ':5', ex: '35 : 5', fast: 6000, rule: 'La : 5 dublezi, apoi tai zeroul. 35 : 5: dublul lui 35 e 70, iar 70 : 10 = 7.', pool: () => shuffle(range(2, 9)), hard: HARD_K, make: k => divItem(5, k) },
+    { id: 'div48', name: 'Împărțirea la 4 și la 8', short: ':4 și :8', ex: '28 : 4', fast: 6000, rule: ':4 înseamnă jumătate, apoi încă o dată jumătate. :8 înseamnă de trei ori jumătate. 28 : 4: 28 → 14 → 7.', pool: () => shuffle([4, 8].flatMap(d => range(2, 9).map(k => ({ d, k })))), hard: () => shuffle([{ d: 4, k: rnd(6, 9) }, { d: 8, k: rnd(6, 9) }]), make: p => divItem(p.d, p.k) },
+    { id: 'divX', name: 'La 3, 6, 7 și 9', short: ':3 :6 :7 :9', ex: '54 : 6', fast: 6000, rule: 'Gândești invers: 54 : 6 = ? înseamnă 6 · ? = 54. Spui tabla lui 6 până ajungi la 54: e 9.', pool: () => shuffle([3, 6, 7, 9].flatMap(d => range(2, 9).map(k => ({ d, k })))), hard: () => shuffle([6, 7, 9]).map(d => ({ d, k: rnd(6, 9) })), make: p => divItem(p.d, p.k) },
+    { id: 'divB', name: 'Toate împărțirile', short: 'toate', boss: true, trophy: 'Stăpânul împărțirilor', ex: 'din toată tabla, amestecate', fast: 5000, rule: 'Nivelul final: împărțiri din toată tabla, amestecate.', mix: { div2: 3, div10: 2, div5: 3, div48: 5, divX: 7 } },
   ] },
   { id: 'add', name: 'Adunări și scăderi', tile: '8 + 5', levels: [
-    { id: 'add10', name: 'Perechile lui 10', short: 'perechile lui 10', ex: '7 + ? = 10', fast: 3000, rule: 'Perechile care fac 10: 1 și 9, 2 și 8, 3 și 7, 4 și 6, 5 și 5. Le folosești la toate trucurile de mai departe.', pool: () => shuffle(range(1, 9)), make: k => tenItem(k) },
-    { id: 'addUp', name: 'Adunarea peste 10', short: '8 + 5', ex: '8 + 5 = 8 + 2 + 3', fast: 5000, rule: 'Faci 10: 8 + 5 = 8 + 2 + 3 = 10 + 3 = 13. Pornești de la numărul mai mare.', pool: () => shuffle(ADD_PAIRS), make: p => add20Item(p[0], p[1]) },
-    { id: 'addDown', name: 'Scăderea peste 10', short: '13 − 5', ex: '13 − 5 = 13 − 3 − 2', fast: 5000, rule: 'Cobori la 10: 13 − 5 = 13 − 3 − 2 = 10 − 2 = 8.', pool: () => shuffle(SUB_PAIRS), make: p => sub20Item(p[0], p[1]) },
-    { id: 'addB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul lui 10', ex: 'adunări și scăderi peste 10', fast: 5000, rule: 'Nivelul final: adunări și scăderi peste 10, amestecate.', pool: () => shuffle(ADD_PAIRS.map(p => ({ t: 'a', p })).concat(SUB_PAIRS.map(p => ({ t: 's', p })))), make: x => (x.t === 'a' ? add20Item(x.p[0], x.p[1]) : sub20Item(x.p[0], x.p[1])) },
+    { id: 'add10', name: 'Perechile lui 10', short: 'perechile lui 10', ex: '7 + ? = 10', fast: 3000, rule: 'Perechile care fac 10: 1 și 9, 2 și 8, 3 și 7, 4 și 6, 5 și 5. Le folosești la toate trucurile de mai departe.', pool: () => shuffle(range(1, 9)), hard: () => shuffle([3, 4, 6, 7]), make: k => tenItem(k) },
+    { id: 'addUp', name: 'Adunarea peste 10', short: '8 + 5', ex: '8 + 5 = 8 + 2 + 3', fast: 5000, rule: 'Faci 10: 8 + 5 = 8 + 2 + 3 = 10 + 3 = 13. Pornești de la numărul mai mare.', pool: () => shuffle(ADD_PAIRS), hard: () => shuffle(ADD_PAIRS.filter(p => Math.min(p[0], p[1]) >= 5)), make: p => add20Item(p[0], p[1]) },
+    { id: 'addDown', name: 'Scăderea peste 10', short: '13 − 5', ex: '13 − 5 = 13 − 3 − 2', fast: 5000, rule: 'Cobori la 10: 13 − 5 = 13 − 3 − 2 = 10 − 2 = 8.', pool: () => shuffle(SUB_PAIRS), hard: () => shuffle(SUB_PAIRS.filter(p => p[1] >= 5 && p[0] - p[1] >= 5)), make: p => sub20Item(p[0], p[1]) },
+    { id: 'addB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul lui 10', ex: 'adunări și scăderi peste 10', fast: 5000, rule: 'Nivelul final: adunări și scăderi peste 10, amestecate.', mix: { addUp: 10, addDown: 10 } },
   ] },
   { id: 'big', name: 'Numere mari', tile: '56 + 6', levels: [
     { id: 'big1', name: 'Zeci întregi', short: '47 + 30', ex: '47 + 30 și 77 − 30', fast: 6000, rule: 'Când aduni sau scazi zeci întregi, se schimbă doar zecile. Unitățile rămân la fel: 47 + 30 = 77.', gen: tensItem },
     { id: 'big2', name: 'Peste zeci', short: '56 + 6', ex: '56 + 6 = 56 + 4 + 2', fast: 8000, rule: 'Faci zeci: 56 + 6 = 56 + 4 + 2 = 60 + 2 = 62. Îi dai lui 56 cât îi trebuie până la 60.', gen: over10Item },
     { id: 'big3', name: 'Sub zeci', short: '53 − 7', ex: '53 − 7 = 53 − 3 − 4', fast: 8000, rule: 'Cobori la zeci: 53 − 7 = 53 − 3 − 4 = 50 − 4 = 46.', gen: under10Item },
-    { id: 'big4', name: 'Două numere: adunare', short: '38 + 45', ex: '38 + 45 = 38 + 40 + 5', fast: 12000, rule: 'Desfaci al doilea număr în zeci și unități: 38 + 45 = 38 + 40 + 5 = 78 + 5 = 83.', gen: twoAddItem },
-    { id: 'big5', name: 'Două numere: scădere', short: '72 − 38', ex: '72 − 38 = 72 − 30 − 8', fast: 14000, rule: 'La fel, cu minus: 72 − 38 = 72 − 30 − 8 = 42 − 8 = 34.', gen: twoSubItem },
-    { id: 'bigB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul numerelor mari', ex: 'toate tipurile', fast: 10000, rule: 'Nivelul final: toate tipurile, amestecate.', gen: () => pick([tensItem, over10Item, under10Item, twoAddItem, twoSubItem])() },
+    { id: 'big4', name: 'Două numere: adunare', short: '38 + 45', ex: '38 + 45 = 38 + 40 + 5', fast: 12000, rule: 'Desfaci al doilea număr în zeci și unități: 38 + 45 = 38 + 40 + 5 = 78 + 5 = 83.', gen: twoAddItem, test: () => [twoAddItem(true), twoAddItem(true)] },
+    { id: 'big5', name: 'Două numere: scădere', short: '72 − 38', ex: '72 − 38 = 72 − 30 − 8', fast: 14000, rule: 'La fel, cu minus: 72 − 38 = 72 − 30 − 8 = 42 − 8 = 34.', gen: twoSubItem, test: () => [twoSubItem(true), twoSubItem(true)] },
+    { id: 'bigB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul numerelor mari', ex: 'toate tipurile', fast: 10000, rule: 'Nivelul final: toate tipurile, amestecate.', mix: { big1: 4, big2: 4, big3: 4, big4: 4, big5: 4 } },
   ] },
   { id: 'neg', name: 'Numere negative', tile: MINUS + '6 + 4', levels: [
     { id: 'neg1', name: 'Datorie și bani', short: '−6 + 4', ex: '−6 + 4', fast: 7000, rule: 'Un număr cu minus e o datorie. −6 + 4: ai o datorie de 6 lei și primești 4. Datoria e mai mare, deci rămâi dator cu 2: −6 + 4 = −2.', gen: debtItem },
     { id: 'neg2', name: 'Cheltui mai mult', short: '4 − 9', ex: '4 − 9', fast: 7000, rule: '4 − 9: ai 4 lei și plătești 9. Îți lipsesc 5, deci rămâi dator: 4 − 9 = −5.', gen: spendItem },
     { id: 'neg3', name: 'Datorie peste datorie', short: '−3 − 5', ex: '−3 − 5', fast: 6000, rule: '−3 − 5: ai o datorie de 3 și mai faci una de 5. Datoriile se adună: −3 − 5 = −8.', gen: doubleDebtItem },
-    { id: 'neg4', name: 'Semnele la înmulțire', short: 'semnele la ·', ex: '−3 · (−4)', fast: 7000, rule: 'Semne la fel dau +. Semne diferite dau −. Întâi semnul, apoi calculezi fără semne: −3 · (−4) = 12.', gen: () => signItem('mul') },
-    { id: 'neg5', name: 'Semnele la împărțire', short: 'semnele la :', ex: '−12 : 4', fast: 7000, rule: 'La împărțire e la fel: semne la fel dau +, semne diferite dau −. −12 : 4 = −3.', gen: () => signItem('div') },
-    { id: 'neg6', name: 'Două semne lipite', short: '5 − (−2)', ex: '5 − (−2)', fast: 8000, rule: 'Minus lângă minus face plus: 5 − (−2) = 5 + 2 = 7. Plus lângă minus face minus: 5 + (−2) = 5 − 2 = 3.', gen: twoSignsItem },
-    { id: 'negB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul semnelor', ex: 'toate tipurile', fast: 8000, rule: 'Nivelul final: toate tipurile, amestecate.', gen: () => pick([debtItem, spendItem, doubleDebtItem, () => signItem('mul'), () => signItem('div'), twoSignsItem])() },
+    { id: 'neg4', name: 'Semnele la înmulțire', short: 'semnele la ·', ex: '−3 · (−4)', fast: 7000, rule: 'Semne la fel dau +. Semne diferite dau −. Întâi semnul, apoi calculezi fără semne: −3 · (−4) = 12.', gen: () => signItem('mul'),
+      demos: () => [signItem('mul', [-1, -1]), signItem('mul', pick([[1, -1], [-1, 1]]))], test: () => [signItem('mul', [-1, -1]), signItem('mul', pick([[1, -1], [-1, 1]]))] },
+    { id: 'neg5', name: 'Semnele la împărțire', short: 'semnele la :', ex: '−12 : 4', fast: 7000, rule: 'La împărțire e la fel: semne la fel dau +, semne diferite dau −. −12 : 4 = −3.', gen: () => signItem('div'),
+      demos: () => [signItem('div', [-1, 1]), signItem('div', [-1, -1])], test: () => [signItem('div', [-1, -1]), signItem('div', pick([[1, -1], [-1, 1]]))] },
+    { id: 'neg6', name: 'Două semne lipite', short: '5 − (−2)', ex: '5 − (−2)', fast: 8000, rule: 'Minus lângă minus face plus: 5 − (−2) = 5 + 2 = 7. Plus lângă minus face minus: 5 + (−2) = 5 − 2 = 3.', gen: twoSignsItem,
+      demos: () => [twoSignsItem(1), twoSignsItem(3)], test: () => [twoSignsItem(pick([1, 2])), twoSignsItem(pick([3, 4]))] },
+    { id: 'negB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul semnelor', ex: 'toate tipurile', fast: 8000, rule: 'Nivelul final: toate tipurile, amestecate.', mix: { neg1: 3, neg2: 3, neg3: 3, neg4: 4, neg5: 3, neg6: 4 } },
   ] },
   { id: 'ord', name: 'Ordinea operațiilor', tile: '2 + 3 ' + DOT + ' 4', levels: [
     { id: 'ord1', name: 'Întâi · și :', short: 'întâi · și :', ex: '8 + 14 : 2', fast: 10000, rule: 'Înmulțirile și împărțirile se fac întâi, adunările și scăderile la urmă. 8 + 14 : 2 = 8 + 7 = 15.', gen: ordFirstItem },
     { id: 'ord2', name: 'Două operații întâi', short: 'două operații', ex: '36 : 4 − 4 · 2', fast: 12000, rule: 'Când sunt două înmulțiri sau împărțiri, le faci pe amândouă întâi, apoi aduni sau scazi. 36 : 4 − 4 · 2 = 9 − 8 = 1.', gen: ordTwoItem },
-    { id: 'ord3', name: 'De la stânga la dreapta', short: 'de la stânga', ex: '24 : 4 · 2', fast: 10000, rule: 'Înmulțirile și împărțirile, de la stânga la dreapta. 24 : 4 · 2 = 6 · 2 = 12, nu 24 : 8. La fel adunările și scăderile: 20 − 8 + 3 = 12 + 3 = 15.', gen: ordLRItem },
-    { id: 'ord4', name: 'Parantezele întâi', short: 'parantezele', ex: '52 − 2 · (25 − 5)', fast: 14000, rule: 'Parantezele, dinăuntru în afară, se fac primele. 52 − 2 · (25 − 5) = 52 − 2 · 20 = 52 − 40 = 12.', gen: ordParItem },
-    { id: 'ord5', name: 'Cu numere negative', short: 'cu semne', ex: '3 − 2 · (1 − 5)', fast: 15000, rule: 'Parantezele întâi, apoi semnele: minus lângă minus face plus. 3 − 2 · (1 − 5) = 3 − 2 · (−4) = 3 + 8 = 11.', gen: ordNegItem },
-    { id: 'ordB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul ordinii', ex: 'ca la itemul 1 de la examen', fast: 14000, rule: 'Nivelul final: calcule ca la itemul 1 de la Evaluarea Națională, amestecate.', gen: () => pick([ordFirstItem, ordTwoItem, ordLRItem, ordParItem, ordNegItem])() },
+    { id: 'ord3', name: 'De la stânga la dreapta', short: 'de la stânga', ex: '24 : 4 · 2', fast: 10000, rule: 'Înmulțirile și împărțirile se fac de la stânga la dreapta. 24 : 4 · 2 = 6 · 2 = 12. Nu faci întâi 4 · 2. La fel adunările și scăderile: 20 − 8 + 3 = 12 + 3 = 15.', gen: ordLRItem,
+      demos: () => [ordLRItem(1), ordLRItem(3)], test: () => shuffle([1, 2, 3]).slice(0, 2).map(f => ordLRItem(f)) },
+    { id: 'ord4', name: 'Parantezele întâi', short: 'parantezele', ex: '52 − 2 · (25 − 5)', fast: 14000, rule: 'Parantezele, dinăuntru în afară, se fac primele. 52 − 2 · (25 − 5) = 52 − 2 · 20 = 52 − 40 = 12.', gen: ordParItem,
+      demos: () => [ordParItem(false), ordParItem(true)], test: () => [ordParItem(true), ordParItem(false)] },
+    { id: 'ord5', name: 'Cu numere negative', short: 'cu semne', ex: '3 − 2 · (1 − 5)', fast: 15000, rule: 'Parantezele întâi, apoi semnele: minus lângă minus face plus. 3 − 2 · (1 − 5) = 3 − 2 · (−4) = 3 + 8 = 11.', gen: ordNegItem,
+      demos: () => [ordNegItem('par'), ordNegItem('prod')], test: () => [ordNegItem('par'), ordNegItem('prod')] },
+    { id: 'ordB', name: 'Toate, amestecate', short: 'amestecate', boss: true, trophy: 'Stăpânul ordinii', ex: 'ca la itemul 1 de la examen', fast: 14000, rule: 'Nivelul final: calcule ca la itemul 1 de la Evaluarea Națională, amestecate.', mix: { ord1: 4, ord2: 4, ord3: 4, ord4: 4, ord5: 4 } },
   ] },
 ];
 /* Lumile, în ordinea hărții de dependențe (profesorul, 2026-10-14): înmulțirea cere adunările,
@@ -1028,21 +1055,30 @@ const WORLD_NEEDS = { add: [], mul: ['add'], big: ['add'], div: ['mul'], neg: ['
 const minusOK = wid => wid === 'neg' || wid === 'ord';   // tastatura are minus doar unde rezultatul poate fi negativ
 const GATE_OK = 16;
 WORLDS.sort((a, b) => Object.keys(WORLD_NEEDS).indexOf(a.id) - Object.keys(WORLD_NEEDS).indexOf(b.id));
-const WORLDK = {};
+const WORLDK = {}, LVK = {};
+// Un calcul dintr-un nivel anume, cu id-ul nivelului în it.src (pentru timpul lui și pentru greșelile de la final).
+function itemOf(id) { const L = LVK[id], p = L.pool(); const it = L.make(p[rnd(0, p.length - 1)]); it.src = id; return it; }
 WORLDS.forEach(w => { WORLDK[w.id] = w; w.levels.forEach((L, i) => {
-  L.wid = w.id; L.idx = i;
+  L.wid = w.id; L.idx = i; LVK[L.id] = L;
   if (L.nf === undefined) L.nf = 7;
   if (L.ns === undefined) L.ns = L.boss ? 20 : 8;
   if (L.gen) { const g = L.gen; L.pool = () => new Array(60).fill(null); L.make = () => g(); }
+  // Nivelul final amestecat: exact câte calcule din fiecare nivel scrie în mix, în altă ordine de fiecare dată.
+  if (L.mix) { const m = L.mix; L.pool = () => shuffle(Object.keys(m).flatMap(id => new Array(m[id]).fill(id))); L.make = id => itemOf(id); }
 }); });
+// Timpul pentru „rapid” al unui calcul: al nivelului din care vine (la nivelul final amestecat) sau al nivelului jucat.
+const fastOf = (L, it) => (it && it.src ? LVK[it.src].fast : L.fast);
 // Câte corecte singur trebuie pentru 2 stele (și câte fulgere pentru 3): trei sferturi (6 din 8, 9 din 12).
 const need2 = L => (L.boss ? 16 : Math.ceil(L.ns * 0.75));
 
 /* ---- starea salvată pe acest telefon ---- */
-const KEY = 'calculFulger.v1';
+// Modul profesor are progresul lui, separat (2026-10-27): ce joci acolo nu atinge progresul copilului.
+const KEY_ELEV = 'calculFulger.v1', KEY_PROF = 'calculFulger.profesor';
+let KEY = KEY_ELEV;
 const blankFact = () => ({ l: 0, n: 0, ok: 0, fs: 0, t: 0, tn: 0, d: -1, last: -1 });
 function blankFam() { const f = {}; FAM.forEach(x => { f[x.k] = blankFact(); }); return { placed: false, f }; }
-const blankTest = () => ({ done: false, date: '', res: {}, partial: null });
+// skip = a apăsat „Sari peste test”; partial = testul început (și „Refă testul”), cu verdictele de până atunci.
+const blankTest = () => ({ done: false, skip: false, date: '', res: {}, partial: null });
 function blankState() { return { v: 1, created: Date.now(), updated: Date.now(), xp: 0, last: 'add', name: '', modes: { mul: blankFam(), div: blankFam(), add: blankFam() }, lv: {}, test: blankTest(), days: {}, sprint: [], log: [] }; }
 function repair(s) {
   const b = blankState();
@@ -1058,9 +1094,14 @@ function repair(s) {
   s.test = Object.assign(blankTest(), s.test && typeof s.test === 'object' ? s.test : {});
   s.name = typeof s.name === 'string' ? s.name.slice(0, 30) : '';
   s.days = s.days && typeof s.days === 'object' ? s.days : {};
-  s.sprint = Array.isArray(s.sprint) ? s.sprint : [];
+  // Un progres stricat nu are voie să blocheze jocul: numerele trebuie să fie numere (2026-10-27).
+  const num = (v, max) => (Number.isFinite(+v) && +v >= 0 ? Math.min(+v, max) : 0);
+  Object.keys(s.days).forEach(k => { const d = s.days[k]; if (!d || typeof d !== 'object') { delete s.days[k]; return; } ['r', 'q', 'ok', 'ms', 'sp', 'spn'].forEach(f => { d[f] = num(d[f], 1e9); }); });
+  Object.keys(s.lv).forEach(id => { const x = s.lv[id]; if (!x || typeof x !== 'object') { delete s.lv[id]; return; } x.s = Math.round(num(x.s, 3)); x.p = num(x.p, 1e6); x.b = num(x.b, 20); });
+  s.sprint = Array.isArray(s.sprint) ? s.sprint.filter(x => x && typeof x === 'object' && typeof x.d === 'string') : [];
+  s.sprint.forEach(x => { x.s = Math.round(num(x.s, 200)); x.ms = num(x.ms, 60000); });
   s.log = Array.isArray(s.log) ? s.log : [];
-  s.xp = +s.xp || 0;
+  s.xp = Math.round(num(s.xp, 1e7));
   if (!WORLDK[s.last]) s.last = 'add';
   const cut = dayIdx() - 180;
   Object.keys(s.days).forEach(k => { if (keyToIdx(k) < cut) delete s.days[k]; });
@@ -1068,10 +1109,21 @@ function repair(s) {
 }
 let storageOK = true;
 function load() { try { const raw = localStorage.getItem(KEY); return repair(raw ? JSON.parse(raw) : null); } catch (e) { storageOK = false; return blankState(); } }
-function save() { S.updated = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; } catch (e) { storageOK = false; } }
+let saveWarned = false;
+function save() {
+  S.updated = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; }
+  catch (e) {
+    // Telefonul plin: încearcă din nou cu jurnalul scurtat la jumătate.
+    try { S.log.splice(0, Math.floor(S.log.length / 2)); localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; return; } catch (e2) { /* tot nu merge */ }
+    storageOK = false;
+    if (!saveWarned && HAS_DOM && typeof toast === 'function') { saveWarned = true; toast('Atenție: progresul nu se salvează pe acest telefon.'); }
+  }
+}
 let S = load();
 
-function today() { const k = dayKey(); if (!S.days[k]) S.days[k] = { r: 0, q: 0, ok: 0, ms: 0, sp: 0 }; return S.days[k]; }
+// sp = cel mai bun scor la sprint azi, spn = câte sprinturi a făcut azi (și unul cu 0 corecte contează).
+function today() { const k = dayKey(); if (!S.days[k]) S.days[k] = { r: 0, q: 0, ok: 0, ms: 0, sp: 0, spn: 0 }; return S.days[k]; }
 /* Fiecare răspuns, cu secundele lui (profesorul, 2026-10-14: „rapid” sau „lent” nu ajunge).
    d = ziua, w = unde (id-ul nivelului, „test:” + nivel, „harta-mul”, „antr-mul”, „sprint”), q = calculul,
    a = ce a scris („” = n-a scris nimic și a primit trucul), c = 1 corect, s = secunde până la ultima cifră,
@@ -1082,7 +1134,7 @@ function logAns(w, q, a, c, ms, h) {
   if (S.log.length > LOG_MAX) S.log.splice(0, S.log.length - LOG_MAX);
 }
 function streak() {
-  const set = new Set(Object.keys(S.days).filter(k => S.days[k].q > 0 || S.days[k].sp > 0).map(keyToIdx));
+  const set = new Set(Object.keys(S.days).filter(k => S.days[k].q > 0 || S.days[k].sp > 0 || S.days[k].spn > 0).map(keyToIdx));
   let d = dayIdx(); const playedToday = set.has(d); if (!playedToday) d--;
   let n = 0; while (set.has(d)) { n++; d--; }
   return { n, playedToday };
@@ -1093,8 +1145,6 @@ const RANKS = ['Începător', 'Ucenic', 'Descurcăreț', 'Iute', 'Rapid', 'Fulge
 const rankName = L => (L <= RANKS.length ? RANKS[L - 1] : 'Legendă ' + (L - RANKS.length + 1));
 const acc = s => (s.n ? s.ok / s.n : 0);
 function famCounts(mode) { const by = [0, 0, 0, 0, 0]; let seen = 0; FAM.forEach(f => { const s = S.modes[mode].f[f.k]; by[s.l]++; if (s.n) seen++; }); return { by, known: by[3] + by[4], fast: by[4], seen }; }
-function sprintRecord() { return S.sprint.reduce((m, x) => Math.max(m, x.s), 0); }
-function sprintDays() { const m = {}; S.sprint.forEach(x => { m[x.d] = Math.max(m[x.d] || 0, x.s); }); return Object.keys(m).sort().map(d => ({ d, best: m[d] })); }
 
 /* Starea unui calcul pe hartă: 0 de învățat (gri), 1 de lucrat (portocaliu), 2 aproape (galben),
    3 știi (verde), 4 știi rapid (verde cu fulger). De la galben în sus, un calcul crește cel mult
@@ -1191,42 +1241,68 @@ const worldPassed = wid => lvState(bossOf(wid).id).s >= 2 || testKnows(wid);
 const worldMissing = wid => (WORLD_NEEDS[wid] || []).filter(x => !worldPassed(x));
 // O lume în care a jucat deja rămâne deschisă (progresul de dinainte de 2026-10-14 nu se pierde).
 const worldPlayed = wid => WORLDK[wid].levels.some(L => lvState(L.id).p > 0);
-const worldOpen = wid => ADMIN || worldPlayed(wid) || !worldMissing(wid).length;
+// O lume știută la test e deschisă, chiar dacă lumea de dinainte nu e (2026-10-27).
+const worldOpen = wid => ADMIN || worldPlayed(wid) || testKnows(wid) || !worldMissing(wid).length;
 // Lumile pe care le deschide lumea wid (cele care o au printre condiții).
 const worldsAfter = wid => WORLDS.filter(w => (WORLD_NEEDS[w.id] || []).indexOf(wid) >= 0);
 function isUnlocked(wid, i) { const w = WORLDK[wid]; return worldOpen(wid) && (ADMIN || i === 0 || lvState(w.levels[i].id).s > 0 || lvState(w.levels[i - 1].id).s >= 2); }
 function worldStars(wid) { const w = WORLDK[wid]; let s = 0, passed = 0; w.levels.forEach(L => { const x = lvState(L.id).s; s += x; if (x >= 2) passed++; }); return { s, max: w.levels.length * 3, passed, n: w.levels.length }; }
-function nextLevel(wid) {
+// Următorul nivel de învățat dintr-o lume: primul deschis fără 2 stele; apoi nivelul final, cât timp nu e trecut.
+function learnLevel(wid) {
   const w = WORLDK[wid], bi = w.levels.length - 1;
   for (let i = 0; i < w.levels.length; i++) if (isUnlocked(wid, i) && lvState(w.levels[i].id).s < 2) return i;
   // Nivelul final deschide lumile următoare: îl propune până trece pragul.
   if (isUnlocked(wid, bi) && !worldPassed(wid) && worldsAfter(wid).length) return bi;
+  return -1;
+}
+// Ca learnLevel, iar când lumea e învățată: primul nivel fără 3 stele (doar pentru a treia stea).
+function nextLevel(wid) {
+  const li = learnLevel(wid); if (li >= 0) return li;
+  const w = WORLDK[wid];
   for (let i = 0; i < w.levels.length; i++) if (isUnlocked(wid, i) && lvState(w.levels[i].id).s < 3) return i;
   return -1;
 }
+// Butonul mare de acasă (2026-10-27): întâi ce e de învățat în lumea în care a jucat ultima dată, apoi în prima lume
+// deschisă și netrecută, apoi orice nivel deschis fără 2 stele. A treia stea vine abia la urmă: nu-l trimite înapoi.
+function ctaPick() {
+  const open = WORLDS.filter(w => worldOpen(w.id)).map(w => w.id);
+  const tries = [];
+  if (WORLDK[S.last] && open.indexOf(S.last) >= 0 && !worldPassed(S.last)) tries.push(S.last);
+  open.forEach(id => { if (!worldPassed(id)) tries.push(id); });
+  for (const id of tries) { const li = learnLevel(id); if (li >= 0) return { wid: id, li }; }
+  for (const id of open) { const w = WORLDK[id]; for (let i = 0; i < w.levels.length; i++) if (isUnlocked(id, i) && lvState(w.levels[i].id).s < 2) return { wid: id, li: i }; }
+  const order = WORLDK[S.last] ? [S.last].concat(open) : open;
+  for (const id of order) { const li = nextLevel(id); if (li >= 0) return { wid: id, li }; }
+  return null;
+}
 // Un nivel: 2 exemple, L.nf de completat (întâi doar ultima căsuță, apoi tot mai multe), L.ns singur.
-// La a doua încercare: fără exemple, 2 de completat, L.ns singur. Nivelul final: 20 singur.
+// După un nivel trecut, încercarea următoare: fără exemple, 2 de completat, L.ns singur. După un nivel picat
+// rămân toate cele L.nf de completat: ajutorul se retrage după reușită, nu după greșeală (2026-10-27).
+// Nivelul final: 20 singur.
 function levelPlan(L, withDemo) {
   // Trece prin toate calculele nivelului, amestecate; apoi încă o dată, în altă ordine.
-  // La nivelurile cu numere la întâmplare, nu repetă un calcul dintre ultimele 6.
+  // La nivelurile cu numere la întâmplare, nu repetă un calcul dintre ultimele 6 (la nivelul final, din tot nivelul).
   let pool = [];
-  const recent = [];
+  const recent = [], keep = L.boss ? L.ns : 6;
   const next = () => {
     let it, t = 0;
     for (;;) {
       if (!pool.length) pool = L.pool().slice();
       const p = pool.shift(); it = L.make(p);
       if (recent.indexOf(it.q) < 0 || ++t >= 10) break;
-      if (pool.length) pool.push(p);   // îl păstrează pentru mai târziu
+      pool.push(p);   // îl păstrează pentru mai târziu (la nivelul final amestecat, ca să rămână câte calcule din fiecare nivel)
     }
-    recent.push(it.q); if (recent.length > 6) recent.shift();
+    recent.push(it.q); if (recent.length > keep) recent.shift();
     return it;
   };
   const plan = [];
   if (L.boss) { for (let i = 0; i < L.ns; i++) plan.push({ mode: 'solo', it: next(), counted: true }); return plan; }
-  if (withDemo) plan.push({ mode: 'demo', it: next() }, { mode: 'demo', it: next() });
-  const nf = withDemo ? L.nf : 2;
-  for (let i = 0; i < nf; i++) { const it = next(); plan.push({ mode: 'fill', it, blanks: withDemo ? Math.min(it.slots.length, i + 1) : it.slots.length }); }
+  if (withDemo) {
+    const d = L.demos ? L.demos() : [next(), next()];
+    d.forEach(it => { recent.push(it.q); plan.push({ mode: 'demo', it }); });
+  }
+  const st = lvState(L.id), full = withDemo || st.s < 2 || !!st.lf, nf = full ? L.nf : 2;
+  for (let i = 0; i < nf; i++) { const it = next(); plan.push({ mode: 'fill', it, blanks: full ? Math.min(it.slots.length, i + 1) : it.slots.length }); }
   for (let i = 0; i < L.ns; i++) plan.push({ mode: 'solo', it: next(), counted: true });
   return plan;
 }
@@ -1241,20 +1317,70 @@ function recordLevel(L, ok, fast) {
   const stars = starsFor(L, ok, fast), st = lvState(L.id), prev = st.s;
   const before = WORLDS.filter(w => worldOpen(w.id)).map(w => w.id);
   st.s = Math.max(prev, stars); st.p++; st.b = Math.max(st.b, ok);
+  // lf = ultima încercare a fost picată: încercarea următoare are din nou tot ajutorul, chiar dacă nivelul fusese trecut.
+  if (stars < 2) st.lf = 1; else delete st.lf;
   if (L.boss) st.bf = Math.max(st.bf || 0, fast);
   S.lv[L.id] = st;
   const newWorlds = WORLDS.filter(w => before.indexOf(w.id) < 0 && worldOpen(w.id));
   return { stars, prev, newWorlds };
 }
 
-/* ---- testul de pornire: câte un calcul (sau două) din fiecare nivel ---- */
+/* ---- testul de pornire: două calcule grele din fiecare nivel (2026-10-27; înainte era unul singur,
+   iar un copil care știa jumătate din tabla lui 7 o primea „știută” o dată din două) ---- */
 function testList() { const out = []; WORLDS.forEach(w => w.levels.forEach((L, i) => { if (!L.boss) out.push({ wid: w.id, li: i }); })); return out; }
-// k = știe (corect și repede), s = știe, dar încet, x = de învățat, - = netestat (după două greșite în aceeași lume)
-function testVerdict(correct, fast, tries) { if (!correct) return 'x'; if (fast) return 'k'; return tries >= 2 ? 's' : null; }
+const TEST_N = 2;
+// Cele două întrebări pentru un nivel, diferite între ele: din L.test, din calculele grele (L.hard) sau din nivel.
+function testPair(L) {
+  for (let t = 0; t < 20; t++) {
+    let a;
+    if (L.test) a = L.test();
+    else if (L.hard) { const h = L.hard(); a = [L.make(h[0]), L.make(h[1 % h.length])]; }
+    else { const p = L.pool(); a = [L.make(p[0]), L.make(p[1 % p.length])]; }
+    if (a[0].q !== a[1].q) return a;
+  }
+  const p = L.pool(); return [L.make(p[0]), L.make(p[1 % p.length])];
+}
+// Verdictul unui nivel, din cele două răspunsuri: k = știe (amândouă corecte și repede), s = știe, dar încet,
+// x = de învățat (unul greșit), - = netestat (după două niveluri greșite la rând în aceeași lume).
+function testVerdict(answers) { if (answers.some(a => !a.c)) return 'x'; return answers.every(a => a.f) ? 'k' : 's'; }
+const TEST_RANK = { '-': 0, x: 1, s: 2, k: 3 };
+// La „Refă testul”, fiecare nivel păstrează cel mai bun verdict: un test mai slab nu închide ce era deschis.
+function mergeTest(old, res) { const out = Object.assign({}, old || {}); Object.keys(res).forEach(id => { if ((TEST_RANK[res[id]] || 0) >= (TEST_RANK[out[id]] || 0)) out[id] = res[id]; }); return out; }
 function applyTest(res) {
   Object.keys(res).forEach(id => { if (res[id] === 'k') { const st = lvState(id); st.s = Math.max(st.s, 2); st.t = 1; S.lv[id] = st; } });
   const first = WORLDS.find(w => w.levels.some(L => !L.boss && res[L.id] !== 'k'));
   if (first) S.last = first.id;
+}
+
+/* ---- sprinturile (profesorul, 2026-10-27): câte un sprint pentru fiecare lume, fără ordinea operațiilor, doar cu
+   nivelurile trecute; fiecare cu recordul lui și ținta „recordul tău + 1”. La tablă rămâne și ținta mare de 25
+   (sprintul de pe foaie). După 2 lumi trecute, încă unul, amestecat. Oricare sprint contează la „Ținta de azi”;
+   până trece prima lume, ținta zilei e doar rundele. ---- */
+const SPRINT_W = ['add', 'mul', 'div', 'big', 'neg'];
+const SPRINT_NAME = { add: 'adunări și scăderi', mul: 'tabla înmulțirii', div: 'împărțiri', big: 'numere mari', neg: 'numere negative', mix: 'amestecat' };
+const lvPassed = L => lvState(L.id).s >= 2 || (!!S.test.done && S.test.res[L.id] === 's');
+const sprintLevels = w => (w === 'mix' ? SPRINT_W.filter(x => worldPassed(x)) : [w]).flatMap(x => WORLDK[x].levels.filter(L => !L.boss && lvPassed(L)));
+const sprintOpen = w => (w === 'mix' ? SPRINT_W.filter(x => worldPassed(x)).length >= 2 : worldOpen(w) && sprintLevels(w).length > 0);
+const sprintsOpen = () => SPRINT_W.concat(['mix']).filter(sprintOpen);
+// Sprinturile vechi (de dinainte de 2026-10-27) erau toate cu tabla.
+const sprintOf = x => x.w || 'mul';
+function sprintRecord(w) { return S.sprint.reduce((m, x) => (w && sprintOf(x) !== w ? m : Math.max(m, x.s)), 0); }
+function sprintDays(w) { const m = {}; S.sprint.forEach(x => { if (w && sprintOf(x) !== w) return; m[x.d] = Math.max(m[x.d] || 0, x.s); }); return Object.keys(m).sort().map(d => ({ d, best: m[d] })); }
+// Ținta zilei cere un sprint doar după prima lume trecută și doar dacă există un sprint deschis.
+const sprintNeeded = () => WORLDS.some(w => worldPassed(w.id)) && sprintsOpen().length > 0;
+// Calculele unui sprint. La tablă: calculele de pe foaie (REC_L05), în ordinea ei, doar cele din nivelurile trecute;
+// cu toată tabla trecută e exact foaia. Restul până la 30 vin din nivelurile trecute. Celelalte: 40 de calcule.
+function sprintItems(w) {
+  const levels = sprintLevels(w); if (!levels.length) return [];
+  const out = [], add = it => { if (!out.length || out[out.length - 1].q !== it.q) out.push(it); };
+  if (w === 'mul') {
+    const ok = new Set(levels.map(L => L.id));
+    SPRINT.forEach(p => { const a = p[0], b = p[1]; if (ok.has('mul' + trickOf(a, b).f) || (a === b && ok.has('mulP'))) add(nbSteps(a, b)); });
+  }
+  // Destule calcule cât să poată bate recordul (ținta = recordul + 1), cu rezervă.
+  const n = Math.max(w === 'mul' ? 30 : 40, sprintRecord(w) + 6);
+  for (let t = 0; out.length < n && t < n * 10; t++) { const L = levels[t % levels.length], p = L.pool(); add(L.make(p[rnd(0, p.length - 1)])); }
+  return out;
 }
 
 /* ---- raportul pentru WhatsApp ---- */
@@ -1268,6 +1394,7 @@ function hardest(mode, max) {
 function logName(w) {
   if (w.indexOf('test:') === 0) return 'Testul de pornire';
   if (w === 'sprint') return 'Sprint';
+  if (w.indexOf('sprint:') === 0) return 'Sprint: ' + (SPRINT_NAME[w.slice(7)] || '');
   const m = /^(harta|antr)-(\w+)$/.exec(w); if (m && MODES[m[2]]) return (m[1] === 'harta' ? 'Harta: ' : 'Antrenament: ') + MODES[m[2]].name.toLowerCase();
   for (const x of WORLDS) for (const L of x.levels) if (L.id === w) return x.name + ' · ' + L.name;
   return w;
@@ -1282,13 +1409,13 @@ function logGroups(day) {
   return order.map(g => { const a = m[g]; return { name: g, n: a.length, ok: a.filter(x => x.c).length, med: median(a.map(x => x.s)), slow: a.slice().sort((x, y) => y.s - x.s).slice(0, 3), all: a }; });
 }
 function reportText() {
-  const k = dayKey(), t = S.days[k] || { r: 0, q: 0, ok: 0, ms: 0, sp: 0 }, st = streak();
-  const keys = Object.keys(S.days), played = keys.filter(x => S.days[x].q > 0 || S.days[x].sp > 0).length;
+  const k = dayKey(), t = S.days[k] || { r: 0, q: 0, ok: 0, ms: 0, sp: 0, spn: 0 }, st = streak();
+  const keys = Object.keys(S.days), played = keys.filter(x => S.days[x].q > 0 || S.days[x].sp > 0 || S.days[x].spn > 0).length;
   const mins = Math.round(keys.reduce((a, x) => a + (S.days[x].ms || 0), 0) / 60000);
-  const rec = sprintRecord(), m = famCounts('mul'), out = [];
+  const m = famCounts('mul'), out = [];
   out.push('⚡ Calcul Fulger · raport ' + niceDate(k) + (S.name ? ' · ' + S.name : ''));
   out.push('🔥 ' + nr(st.n, 'zi', 'zile') + ' la rând · ' + nr(played, 'zi jucată', 'zile jucate') + ' · ' + nr(mins, 'minut', 'minute') + ' în total');
-  out.push('Azi: ' + nr(t.r, 'rundă', 'runde') + ', ' + t.ok + ' corecte din ' + t.q + (t.sp ? ' · sprint ' + t.sp : ' · fără sprint') + (rec ? ' (record ' + rec + ', ținta ' + SPRINT_TARGET + ')' : ''));
+  out.push('Azi: ' + nr(t.r, 'rundă', 'runde') + ', ' + t.ok + ' corecte din ' + t.q + (t.spn || t.sp ? ' · ' + nr(t.spn || 1, 'sprint', 'sprinturi') : ' · fără sprint'));
   if (S.test.done) {
     const res = S.test.res;
     out.push('');
@@ -1297,7 +1424,9 @@ function reportText() {
       const ls = w.levels.filter(L => !L.boss), g = v => ls.filter(L => (res[L.id] || '-') === v).map(L => L.short), parts = [];
       if (g('k').length) parts.push('știe ' + g('k').join(', '));
       if (g('s').length) parts.push('încet ' + g('s').join(', '));
-      const x = g('x').concat(g('-')); if (x.length) parts.push('de învățat ' + x.join(', '));
+      if (g('x').length) parts.push('de învățat ' + g('x').join(', '));
+      // Netestat = testul s-a oprit în lumea asta după două niveluri greșite la rând: nu știm, nu e o greșeală.
+      if (g('-').length) parts.push('netestat ' + g('-').join(', '));
       out.push('· ' + w.name + ': ' + parts.join('; '));
     });
   }
@@ -1309,9 +1438,11 @@ function reportText() {
   if (S.modes.mul.placed || m.seen) {
     for (let a = 2; a <= 9; a++) { let row = a + '  '; for (let b = a; b <= 9; b++) row += EMO[S.modes.mul.f[a + 'x' + b].l]; out.push(row); }
     out.push(EMO[3] + ' știe · ' + EMO[2] + ' aproape · ' + EMO[1] + ' de lucrat · ' + EMO[0] + ' încă nu');
-    const h = hardest('mul', 10); if (h.length) out.push('De lucrat: ' + h.map(f => f.a + DOT + f.b).join(', '));
+    const h = hardest('mul', 10); if (h.length) out.push('De lucrat sau de învățat: ' + h.map(f => f.a + DOT + f.b).join(', '));
   }
-  const sd = sprintDays().slice(-7); if (sd.length) out.push('Sprint, pe zile: ' + sd.map(x => x.best).join(', '));
+  const sw = SPRINT_W.concat(['mix']).filter(w => sprintDays(w).length);
+  if (sw.length) { out.push(''); out.push('Sprinturi (cel mai bun scor pe zi, ultimele 7 zile):'); }
+  sw.forEach(w => out.push('· ' + SPRINT_NAME[w].charAt(0).toUpperCase() + SPRINT_NAME[w].slice(1) + ': ' + sprintDays(w).slice(-7).map(x => x.best).join(', ') + ' · record ' + sprintRecord(w) + (w === 'mul' ? ', ținta mare ' + SPRINT_TARGET : '')));
   // Secundele din ultima zi jucată: un raport trimis a doua zi dimineața le are și el.
   const lastD = S.log.length ? S.log[S.log.length - 1].d : k, lg = logGroups(lastD);
   if (lg.length) {
@@ -1339,11 +1470,26 @@ function repCode(body) {
   return x.slice(0, 4) + '-' + x.slice(4);
 }
 
+/* După un nivel final picat (2026-10-27): înainte de o nouă încercare, PRACTICE_N calcule exact de felul celor greșite,
+   cu pașii de completat. miss = [{ src: id-ul nivelului } sau { fk: '7x8' }] (calculele greșite sau fără răspuns la timp). */
+const PRACTICE_N = 6;
+function practiceItems(L, miss) {
+  const out = [], make = m => {
+    if (m && m.fk) { const f = FAMK[m.fk]; return Math.random() < 0.5 ? nbSteps(f.a, f.b) : nbSteps(f.b, f.a); }
+    if (m && m.src && LVK[m.src]) return itemOf(m.src);
+    const p = L.pool(); return L.make(p[rnd(0, p.length - 1)]);
+  };
+  const list = miss && miss.length ? shuffle(miss) : [null];
+  for (let t = 0; out.length < PRACTICE_N && t < PRACTICE_N * 10; t++) { const it = make(list[out.length % list.length]); if (!out.length || out[out.length - 1].q !== it.q) out.push(it); }
+  return out;
+}
+
 if (!HAS_DOM) {
   // Doar pentru verificarea automată (fără browser).
   globalThis.CF = { FAM, FAMK, trickOf, mulHelp, divHelp, addHelp, subHelp, famQuestion, buildFamRound, assemble, famUpdate, famTeach, mulXY, nbCands, nbFirst, nbBridge, nbSteps,
-    WORLDS, WORLDK, levelPlan, starsFor, isUnlocked, nextLevel, worldStars, testList, testVerdict, applyTest, reportText,
-    WORLD_NEEDS, worldOpen, worldPassed, recordLevel, logAns,
+    WORLDS, WORLDK, LVK, levelPlan, starsFor, isUnlocked, nextLevel, learnLevel, ctaPick, worldStars, testList, testVerdict, testPair, mergeTest, applyTest, reportText,
+    WORLD_NEEDS, worldOpen, worldPassed, recordLevel, logAns, fastOf, practiceItems, PRACTICE_N, testKnows: wid => testKnows(wid),
+    sprintItems, sprintOpen, sprintsOpen, sprintNeeded, sprintRecord, dailyLevels, repair,
     blankState, levelOf, rankName, nr, SPRINT, repCode, repNorm, dayIdx, dayKey, dailyPlan, DAILY_N, getS: () => S, setS: v => { S = v; }, setAdmin: v => { ADMIN = v; } };
   return;
 }
@@ -1531,8 +1677,10 @@ let curWorld = 'mul';
 
 function getPref(k, d) { try { const v = localStorage.getItem('calculFulger.' + k); return v === null ? d : v; } catch (e) { return d; } }
 function setPref(k, v) { try { localStorage.setItem('calculFulger.' + k, v); } catch (e) { /* nu contează */ } }
-function checkAdmin() { if (location.hash === '#profesor') setPref('admin', '1'); ADMIN = getPref('admin', '0') === '1'; }
-function adminBar() { return ADMIN ? '<div class="admin"><span><b>Mod profesor:</b> toate nivelurile sunt deschise, doar pe acest telefon.</span>' + btn('admin-off', 'Ieși', false) + '</div>' : ''; }
+// Modul profesor folosește alt progres (KEY_PROF): ce joci acolo nu atinge progresul copilului (2026-10-27).
+function useKey(admin) { const k = admin ? KEY_PROF : KEY_ELEV; if (k !== KEY) { KEY = k; S = load(); } }
+function checkAdmin() { if (location.hash === '#profesor') setPref('admin', '1'); ADMIN = getPref('admin', '0') === '1'; useKey(ADMIN); }
+function adminBar() { return ADMIN ? '<div class="admin"><span><b>Mod profesor:</b> toate nivelurile sunt deschise. Progresul de aici e separat: nu atinge progresul copilului.</span>' + btn('admin-off', 'Ieși', false) + '</div>' : ''; }
 function show(name) { ['home', 'world', 'done', 'progress', 'report'].forEach(n => { el[n].hidden = n !== name; }); window.scrollTo(0, 0); }
 function later(fn, ms) { const r = RUN; setTimeout(() => { if (RUN === r) fn(); }, ms); }
 let toastT = 0;
@@ -1695,10 +1843,9 @@ function stackBar(c) { return '<span class="stack">' + [4, 3, 2, 1].map(l => (c.
 
 /* ---- acasă ---- */
 function ctaHTML() {
-  let wid = S.last, li = nextLevel(wid);
-  if (li < 0) { const w2 = WORLDS.find(w => nextLevel(w.id) >= 0); if (w2) { wid = w2.id; li = nextLevel(wid); } }
-  if (li < 0) return '<button class="cta" type="button" data-act="train" data-mode="mul"><span class="t">Antrenament: tabla</span><span class="s">Toate nivelurile au 3 stele. Ține-le proaspete!</span></button>';
-  const w = WORLDK[wid], L = w.levels[li], st = lvState(L.id);
+  const pk = ctaPick();
+  if (!pk) return '<button class="cta" type="button" data-act="train" data-mode="mul"><span class="t">Antrenament: tabla</span><span class="s">Toate nivelurile au 3 stele. Ține-le proaspete!</span></button>';
+  const wid = pk.wid, li = pk.li, w = WORLDK[wid], L = w.levels[li], st = lvState(L.id);
   const t = (S.xp === 0 ? 'Începe: ' : (st.p ? 'Continuă: ' : 'Următorul: ')) + L.name;
   const s = w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (li + 1) + ' din ' + w.levels.length) + (st.s ? ' · ' + nr(st.s, 'stea', 'stele') : '');
   return '<button class="cta" type="button" data-act="level" data-w="' + wid + '" data-l="' + li + '"><span class="t">' + t + '</span><span class="s">' + s + '</span></button>';
@@ -1732,13 +1879,15 @@ function zeroWake(b) {
 function renderHome() {
   const st = streak(), t = S.days[dayKey()] || { r: 0, sp: 0 }, L = levelOf(S.xp);
   const a = lvlStart(L), b = lvlStart(L + 1), pct = Math.max(3, Math.round((S.xp - a) / (b - a) * 100));
-  const rounds = Math.min(t.r, 3), goalDone = t.r >= 3 && t.sp > 0;
-  const pips = [0, 1, 2].map(i => '<span class="pip' + (i < rounds ? ' on' : '') + '">' + (i < rounds ? ICON.check : '') + '</span>').join('') + '<span class="pip sp' + (t.sp ? ' on' : '') + '">' + ICON.bolt + '</span>';
+  const rounds = Math.min(t.r, 3), needSp = sprintNeeded(), spDone = (t.spn || 0) > 0 || t.sp > 0, goalDone = t.r >= 3 && (!needSp || spDone);
+  const pips = [0, 1, 2].map(i => '<span class="pip' + (i < rounds ? ' on' : '') + '">' + (i < rounds ? ICON.check : '') + '</span>').join('') + (needSp ? '<span class="pip sp' + (spDone ? ' on' : '') + '">' + ICON.bolt + '</span>' : '');
   const zileLab = st.n === 1 ? 'zi la rând' : (de(st.n) === ' de ' ? 'de zile la rând' : 'zile la rând');
   const trophies = WORLDS.filter(w => lvState(w.levels[w.levels.length - 1].id).s >= 2).map(w => '<span class="trophy">' + ICON.trophy + w.levels[w.levels.length - 1].trophy + '</span>').join('');
-  const test = !S.test.done
-    ? '<button class="cta test" type="button" data-act="test"><span class="t">' + (S.test.partial ? 'Continuă testul de pornire' : 'Începe cu testul de pornire') + '</span><span class="s">Cam 10 minute. Afli ce știi deja și de unde începi.</span></button>'
+  // „Sari peste test” e ținut minte (2026-10-27): după aceea testul rămâne doar ca link mic, sub butonul mare.
+  const test = !S.test.done && !S.test.skip
+    ? '<button class="cta test" type="button" data-act="test"><span class="t">' + (S.test.partial ? 'Continuă testul de pornire' : 'Începe cu testul de pornire') + '</span><span class="s">' + (S.test.partial ? 'Continui de unde ai rămas.' : '10–15 minute. Afli ce știi deja și de unde începi.') + '</span></button>'
     : '';
+  const testLink = !S.test.done && S.test.skip ? '<button class="linkbtn" type="button" data-act="test">' + (S.test.partial ? 'Continuă testul de pornire' : 'Fă testul de pornire') + '</button>' : '';
   el.home.innerHTML =
     '<header class="top"><div class="brand" data-act="zdbg">' + ICON.bolt + '<span>Calcul</span><span class="w2">Fulger</span></div>' +
     '<button class="icon-btn" type="button" data-act="sound" aria-label="' + (soundOn ? 'Oprește sunetul' : 'Pornește sunetul') + '">' + (soundOn ? ICON.sndOn : ICON.sndOff) + '</button></header>' +
@@ -1748,24 +1897,25 @@ function renderHome() {
       '<div class="stat">' + ICON.flame + '<div><b>' + st.n + '</b><div class="lab">' + zileLab + (!st.playedToday && st.n ? '<br>joacă azi ca s-o păstrezi' : '') + '</div></div></div>' +
       '<div class="stat"><span class="lvlbadge">' + L + '</span><div style="flex:1;min-width:0"><div class="lab">Rangul ' + L + ': ' + rankName(L) + ' · ' + S.xp + ' puncte</div><div class="xpbar"><i style="width:' + pct + '%"></i></div></div></div>' +
     '</div>' +
-    '<section class="card goal"><div class="pips">' + pips + '</div><div><h2>' + (goalDone ? 'Ținta de azi e gata!' : 'Ținta de azi') + '</h2><p class="small muted">3 runde și un sprint · ' + nr(t.r, 'rundă', 'runde') + ' azi' + (t.sp ? ', sprint: ' + t.sp : '') + '</p></div></section>' +
-    (test ? test + '<button class="linkbtn" type="button" data-act="level" data-w="' + WORLDS[0].id + '" data-l="0">Sari peste test</button>' : ctaHTML()) +
+    '<section class="card goal"><div class="pips">' + pips + '</div><div><h2>' + (goalDone ? 'Ținta de azi e gata!' : 'Ținta de azi') + '</h2><p class="small muted">' + (needSp ? '3 runde și un sprint' : '3 runde') + ' · ' + nr(t.r, 'rundă', 'runde') + ' azi' + (needSp && spDone ? ', sprint făcut' : '') + '</p></div></section>' +
+    (test ? test + '<button class="linkbtn" type="button" data-act="skiptest">Sari peste test</button>' : ctaHTML() + testLink) +
     (trophies ? '<div class="trophies">' + trophies + '</div>' : '') +
     (S.xp === 0 ? '<section class="card how"><h3>Cum merge</h3><ol>' +
       '<li>Alegi o lume și treci prin <b>niveluri</b>. Fiecare nivel are un truc.</li>' +
       '<li>La fiecare nivel: <b>2 exemple</b>, apoi <b>completezi căsuțe</b>, apoi lucrezi <b>singur</b>.</li>' +
-      '<li>Scrii rezultatul și apeși <b>OK</b>. Contează <b>primul răspuns</b>. Dacă nu știi, scrie ce crezi. Dacă stai 10 secunde, trucul vine singur.</li>' +
-      '<li><b>2 stele</b> deschid nivelul următor. <b>3 stele</b> = toate corecte și rapide.</li>' +
+      '<li>Scrii rezultatul și apeși <b>OK</b>. Contează <b>primul răspuns</b>. Dacă nu știi, scrie ce crezi. Dacă stai mult fără să scrii, trucul vine singur.</li>' +
+      '<li>Un <b>fulger</b> ' + ICON.bolt + ' = un răspuns corect și rapid.</li>' +
+      '<li><b>2 stele</b> = 3 din 4 corecte. Deschid nivelul următor. <b>3 stele</b> = toate corecte și 3 din 4 fulgere.</li>' +
       '<li>Lumile se deschid pe rând: întâi <b>adunările și scăderile</b>, apoi tabla și numerele mari.</li>' +
-      '<li><b>Antrenamentul cu harta</b> te ajută să nu uiți ce ai învățat.</li></ol></section>' : '') +
+      '<li><b>Runda zilei</b> și <b>antrenamentul cu harta</b> te ajută să nu uiți ce ai învățat.</li></ol></section>' : '') +
     '<section class="list"><h3 class="eyebrow">Lumile</h3>' + WORLDS.map(worldRow).join('') + '</section>' +
-    '<section class="list"><h3 class="eyebrow">Antrenament</h3>' + dailyRow() + trainRow('mul') + sprintRow() + '</section>' +
+    '<section class="list"><h3 class="eyebrow">Antrenament</h3>' + dailyRow() + (worldOpen('mul') ? trainRow('mul') : '') + sprintRows() + '</section>' +
     '<div class="btnrow"><button class="btn" type="button" data-act="progress">Progresul meu</button><button class="btn" type="button" data-act="report">Trimite raportul</button></div>' +
     '<a class="zsign" href="' + SITE + '" target="_blank" rel="noopener"><span class="zseal">' + zeroSvg('idle') + '</span><span>Făcut de <b>Academia Z.E.R.O.</b></span></a>';
 }
 function worldLockText(wid) {
   const miss = worldMissing(wid);
-  return 'Se deschide după nivelul final de la ' + miss.map(x => '„' + WORLDK[x].name + '”').join(' și ') + ': 2 stele, adică ' + GATE_OK + ' corecte din 20.';
+  return 'Se deschide când treci nivelul final de la ' + miss.map(x => '„' + WORLDK[x].name + '”').join(' și ') + ' (' + GATE_OK + ' corecte din 20).';
 }
 function worldRow(w) {
   const ws = worldStars(w.id);
@@ -1777,15 +1927,18 @@ function worldRow(w) {
 }
 function trainRow(m) {
   const c = famCounts(m);
-  return '<button class="mode" type="button" data-act="train" data-mode="' + m + '"><span class="tile">' + ICON.grid + '</span><span class="mb"><span class="n">Cu harta: ' + MODES[m].name.toLowerCase() + '</span><span class="p">' + (S.modes[m].placed ? c.known + ' din 36 pe hartă · 20 de calcule' : 'Întâi harta ta: 36 de calcule') + '</span>' + stackBar(c) + '</span>' + ICON.chev + '</button>';
+  return '<button class="mode" type="button" data-act="train" data-mode="' + m + '"><span class="tile">' + ICON.grid + '</span><span class="mb"><span class="n">Cu harta: ' + MODES[m].name.toLowerCase() + '</span><span class="p">' + (S.modes[m].placed ? 'Știi ' + c.known + ' din 36 · o rundă de cel mult 20 de calcule' : 'Întâi afli ce știi: 36 de calcule, fără ceas') + '</span>' + stackBar(c) + '</span>' + ICON.chev + '</button>';
 }
 function dailyRow() {
   if (!dailyLevels().length) return '<button class="mode locked" type="button" data-act="dlocked"><span class="tile">' + ICON.lock + '</span><span class="mb"><span class="n">Runda zilei</span><span class="p">Se deschide după primul nivel cu 2 stele.</span></span></button>';
   return '<button class="mode" type="button" data-act="daily"><span class="tile">' + ICON.flame + '</span><span class="mb"><span class="n">Runda zilei</span><span class="p">' + (S.daily === dayKey() ? 'Gata azi. Mâine vin alte calcule.' : DAILY_N + ' calcule amestecate din ce ai învățat') + '</span></span>' + ICON.chev + '</button>';
 }
-function sprintRow() {
-  const rec = sprintRecord();
-  return '<button class="mode" type="button" data-act="sprint"><span class="tile">' + ICON.bolt + '</span><span class="mb"><span class="n">Sprint de un minut</span><span class="p">' + (rec ? 'Record: ' + rec + ' · ținta: ' + SPRINT_TARGET : 'Aceleași 30 de calcule ca pe foaie') + '</span></span>' + ICON.chev + '</button>';
+// Câte un rând pentru fiecare sprint deschis: recordul și ținta (recordul + 1).
+function sprintTargetText(w) { const rec = sprintRecord(w); return rec ? 'Record: ' + rec + ' · ținta ta: ' + (rec + 1) + (w === 'mul' ? ' · ținta mare: ' + SPRINT_TARGET : '') : 'Un minut. Fă primul tău record!'; }
+function sprintRows() {
+  const open = sprintsOpen();
+  if (!open.length) return '<button class="mode locked" type="button" data-act="slocked"><span class="tile">' + ICON.lock + '</span><span class="mb"><span class="n">Sprint de un minut</span><span class="p">Se deschide după primul nivel trecut.</span></span></button>';
+  return open.map(w => '<button class="mode" type="button" data-act="sprint" data-sw="' + w + '"><span class="tile">' + ICON.bolt + '</span><span class="mb"><span class="n">Sprint: ' + SPRINT_NAME[w] + '</span><span class="p">' + sprintTargetText(w) + '</span></span>' + ICON.chev + '</button>').join('');
 }
 
 /* ---- drumul nivelurilor dintr-o lume ---- */
@@ -1805,7 +1958,7 @@ function nodeHTML(w, L, i, nx) {
   const num = !open ? ICON.lock : (L.boss ? ICON.trophy : (done ? ICON.check : String(i + 1)));
   const sub = esc(L.ex) + (st.t && st.p === 0 ? ' · știut la test' : '');
   return '<button class="' + cls + '" type="button" data-act="' + (open ? 'level' : 'locked') + '" data-w="' + w.id + '" data-l="' + i + '"><span class="num">' + num + '</span><span class="nb"><span class="n">' + (L.boss ? 'Nivelul final: ' : 'Nivelul ' + (i + 1) + ': ') + L.name + '</span><span class="p">' + sub + '</span>' +
-    (open ? starsHTML(st.s) : '<span class="p">Se deschide cu 2 stele la nivelul ' + i + '</span>') + '</span>' + (cur ? '<span class="go">Joacă</span>' : '') + '</button>';
+    (open ? starsHTML(st.s) : '<span class="p">' + (i && worldOpen(w.id) ? 'Se deschide cu 2 stele la nivelul ' + i : 'Lumea e încă închisă') + '</span>') + '</span>' + (cur ? '<span class="go">Joacă</span>' : '') + '</button>';
 }
 
 /* ---- jocul: comun ---- */
@@ -1884,16 +2037,23 @@ function reward(perfect, fast, pts, anchor, praise) {
 const lvOf = r => WORLDK[r.wid].levels[r.li];
 function startLevel(wid, li) {
   const w = WORLDK[wid]; if (!w || !w.levels[li]) return;
-  if (!isUnlocked(wid, li)) { toast('Se deschide cu 2 stele la nivelul ' + li + '.'); return; }
+  if (!isUnlocked(wid, li)) { toast(li ? 'Se deschide cu 2 stele la nivelul ' + li + '.' : 'Lumea asta e încă închisă.'); return; }
   S.last = wid; save();
+  const L = w.levels[li], st = lvState(L.id);
+  // farm: nivelul are deja 3 stele, deci rejucat dă o cincime din puncte (2026-10-27: punctele vin din ce e nou).
   RUN = { kind: 'level', wid, li, plan: null, i: -1, phase: 'intro', entry: null, fill: null, demo: 0, input: '', t0: 0, covered: false, locked: false, lastWrong: '', fixMsg: '',
-    combo: 0, stats: { n: 0, ok: 0, fast: 0, xp: 0, best: 0, perfect: 0 }, extra: 0, xp0: S.xp };
+    combo: 0, stats: { n: 0, ok: 0, fast: 0, xp: 0, best: 0, perfect: 0 }, extra: 0, xp0: S.xp, farm: st.s >= 3, miss: [] };
+  // După un nivel final picat: întâi exersează greșelile, apoi încearcă din nou (2026-10-27).
+  if (L.boss && st.need) { RUN.practice = true; RUN.farm = false; RUN.plan = practiceItems(L, st.miss).map(it => ({ mode: 'fill', it, blanks: it.slots.length })); }
   openPlay();
 }
+// Punctele, o cincime la un nivel rejucat cu 3 stele; resturile se adună (5 răspunsuri de 2 puncte = 2 puncte).
+function ptsOf(r, p) { if (!r || !r.farm) return p; r.fx = (r.fx || 0) + p / 5; const g = Math.floor(r.fx + 1e-9); r.fx -= g; return g; }
 /* Runda zilei (profesorul, 2026-10-22): DAILY_N calcule amestecate din nivelurile trecute cu 2 stele.
    Întâi nivelurile nevăzute de cele mai multe zile și cele greșite ultima dată; câte unul din fiecare nivel,
    pe rând. Repetarea la câteva zile și amestecul țin minte mai bine decât un singur nivel jucat din nou. */
-function dailyLevels() { return WORLDS.flatMap(w => w.levels.filter(L => !L.boss && lvState(L.id).s >= 2)); }
+// Și nivelurile știute încet la test: le știe, deci intră la repetare (2026-10-27).
+function dailyLevels() { return WORLDS.flatMap(w => w.levels.filter(L => !L.boss && (lvState(L.id).s >= 2 || (S.test.done && S.test.res[L.id] === 's')))); }
 function dailyPlan() {
   const levels = dailyLevels(); if (!levels.length) return [];
   const d0 = dayIdx(), info = {};
@@ -1912,7 +2072,13 @@ function dailyPlan() {
       if (!seen.has(it.q)) { seen.add(it.q); plan.push({ mode: 'solo', it, counted: true, L }); break; }
     }
   }
-  return shuffle(plan);
+  // Cu un singur nivel mic (perechile lui 10 au doar 9 calcule), unele calcule vin de două ori, dar nu unul după altul.
+  for (let i = 0; plan.length < DAILY_N && i < DAILY_N * 4; i++) { const L = order[i % order.length], pool = L.pool(); plan.push({ mode: 'solo', it: L.make(pool[rnd(0, pool.length - 1)]), counted: true, L }); }
+  // Amestecă până nu mai sunt două calcule identice unul după altul (cu puține calcule, câteva încercări).
+  let out = shuffle(plan);
+  const glued = a => a.some((e, i) => i && e.it.q === a[i - 1].it.q);
+  for (let t = 0; t < 200 && glued(out); t++) out = shuffle(plan);
+  return out;
 }
 function startDaily() {
   const plan = dailyPlan(); if (!plan.length) { toast('Se deschide după primul nivel cu 2 stele.'); return; }
@@ -1928,12 +2094,12 @@ function finishDaily() {
   el.done.innerHTML = '<div class="hero"><span class="tag">Runda zilei</span><h1>' + (pct >= 0.9 ? 'Excelent!' : (pct >= 0.7 ? 'Bravo, merge!' : 'Ai muncit bine.')) + '</h1>' +
     '<p>' + st.ok + ' din ' + st.n + ' corecte · ' + nr(st.fast, 'fulger', 'fulgere') + ' · +' + st.xp + ' puncte</p></div>' +
     (lvUp ? '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + lvUp + ', ' + rankName(lvUp) + '!</p>' : '') +
-    '<p class="center">Calculele greșite au venit încă o dată. Mâine vin altele, din ce n-ai mai văzut de mult.</p>' +
+    '<p class="center">' + (st.ok < st.n ? 'Calculele greșite au venit încă o dată, ca exercițiu. ' : 'Niciun calcul greșit! ') + 'Mâine vin altele, din ce n-ai mai văzut de mult.</p>' +
     '<div class="btnrow">' + btn('home', 'Acasă', true) + '</div>';
   show('done');
   if (pct >= 0.9) confetti(); else SFX.win();
 }
-function levelBegin(withDemo) { const r = RUN; if (!r || r.kind !== 'level' || r.phase !== 'intro') return; const L = lvOf(r); r.plan = levelPlan(L, withDemo && !L.boss); r.i = -1; levelNext(); }
+function levelBegin(withDemo) { const r = RUN; if (!r || r.kind !== 'level' || r.phase !== 'intro') return; const L = lvOf(r); if (!r.practice) r.plan = levelPlan(L, withDemo && !L.boss); r.i = -1; levelNext(); }
 function levelNext() {
   const r = RUN; if (!r) return;
   r.i++;
@@ -1942,7 +2108,7 @@ function levelNext() {
   if (e.L) { r.wid = e.L.wid; r.li = e.L.idx; }   // runda zilei: fiecare calcul are nivelul lui
   if (e.mode === 'demo') { r.phase = 'demo'; r.demo = 0; }
   else if (e.mode === 'fill') { r.phase = 'fill'; startFill(e.blanks); }
-  else { r.phase = 'solo'; armTruc(soloTruc, () => levelSubmit('ok'), lvOf(r).fast + 3000); }
+  else { r.phase = 'solo'; armTruc(soloTruc, () => levelSubmit('ok'), fastOf(lvOf(r), e.it) + 3000); }
   renderLevel(); updateBar(); updatePts();
 }
 /* Trucul vine singur după 10 secunde fără răspuns (profesorul, 2026-10-14: fără butoanele „Truc” și „Nu știu”;
@@ -1951,10 +2117,12 @@ function levelNext() {
    Dacă a scris ceva, dar n-a apăsat OK, se trimite singur ce a scris (profesorul, 2026-10-22).
    La niveluri lente, ceasul e limita de „rapid” + 3 s, dar nu sub 10 s. Cu telefonul închis, ceasul stă. */
 const AUTO_TRUC_MS = 10000;
+// Ceasul ține doar cât timp copilul e la aceeași întrebare, în aceeași fază: când trece la vecini sau la pașii
+// trucului, se oprește. Altfel trimitea răspunsul bun al vecinului ca răspuns la calculul greșit (2026-10-27).
 function armTruc(fire, send, ms) {
-  const r = RUN, id = r.qid = (r.qid || 0) + 1, lim = Math.max(AUTO_TRUC_MS, ms || 0);
+  const r = RUN, id = r.qid = (r.qid || 0) + 1, lim = Math.max(AUTO_TRUC_MS, ms || 0), ph = r.phase;
   const tick = () => {
-    if (RUN !== r || r.qid !== id) return;
+    if (RUN !== r || r.qid !== id || r.phase !== ph) return;
     if (document.hidden) { setTimeout(tick, 1000); return; }
     const wait = Math.max(r.t0, r.tk || 0) + lim - now();
     if (r.locked || wait > 50) { setTimeout(tick, Math.max(wait, 300)); return; }
@@ -1991,7 +2159,8 @@ function rowInner(it, row, v) {
   }).join('');
 }
 const dispVal = (sl, val) => (sl.kind === 'choice' ? esc(String(val)) : fmt(val));
-function qhead(it, done) { return '<div class="qhead"><span>' + it.q + '</span><span class="eqs">=</span><span class="box' + (done ? ' ok pop' : '') + '" id="qbox">' + (done ? fmt(it.ans) : '?') + '</span></div>'; }
+// Căsuța mare a rezultatului, la pași: gri și punctată cât timp nu e gata, ca să nu pară locul unde scrii.
+function qhead(it, done) { return '<div class="qhead"><span>' + it.q + '</span><span class="eqs">=</span><span class="box' + (done ? ' ok pop' : ' wait') + '" id="qbox">' + (done ? fmt(it.ans) : '?') + '</span></div>'; }
 function renderLevel() {
   const r = RUN, L = lvOf(r);
   el.keys.classList.remove('off'); el.keys.classList.toggle('nominus', !minusOK(r.wid));
@@ -2009,15 +2178,27 @@ function renderLevel() {
   if (r.phase === 'solo') { el.stage.innerHTML = soloHTML(r, it, L); setDock('keys'); updateBox(); return; }
   if (r.phase === 'fix') { el.stage.innerHTML = lfixHTML(r, it); setDock('keys'); updateBox(); const bx = $('#box'); if (bx && bx.scrollIntoView) bx.scrollIntoView({ block: 'nearest' }); }
 }
+// Secundele pentru un fulger, scrise pentru copil: „4 secunde”, la nivelul final amestecat „4–8 secunde”.
+function fastText(L) {
+  const v = L.mix ? Object.keys(L.mix).map(id => LVK[id].fast / 1000) : [L.fast / 1000], a = Math.min(...v), b = Math.max(...v);
+  return a === b ? nr(a, 'secundă', 'secunde') : a + '–' + b + ' secunde, după calcul';
+}
 function levelIntroHTML(r, L) {
   const w = WORLDK[r.wid], st = lvState(L.id);
-  const what = L.boss ? '20 de calcule, singur. Pentru trofeu: 16 corecte.'
-    : (st.p ? 'Completezi 2, apoi faci ' + L.ns + ' singur.' : 'Vezi 2 exemple, completezi ' + L.nf + ' exerciții, apoi faci ' + L.ns + ' singur.') + ' Cu ' + need2(L) + ' din ' + L.ns + ' corecte singur primești 2 stele și se deschide nivelul următor.';
+  if (r.practice) return '<div class="intro card"><div class="zrow">' + zeroMini('point') + '<span class="tag">' + w.name + ' · înainte de nivelul final</span></div><h2>Întâi exersezi greșelile</h2>' +
+    '<div class="rule">Cel mai bun rezultat al tău aici: ' + nr(st.b || 0, 'răspuns corect', 'răspunsuri corecte') + ' din 20. Îți trebuie ' + GATE_OK + '. Acum faci ' + nr(r.plan.length, 'calcul', 'calcule') + ' exact de felul celor greșite, cu pașii. Apoi încerci din nou nivelul final.</div>' +
+    '<p class="small">Exersatul nu dă stele. Te pregătește pentru ' + GATE_OK + ' corecte din 20.</p></div>';
+  const what = L.boss ? '20 de calcule, singur. <b>2 stele și trofeul:</b> ' + GATE_OK + ' corecte din 20. <b>3 stele:</b> 19 corecte și 15 fulgere.'
+    : (st.p && st.s >= 2 && !st.lf ? 'Completezi 2, apoi faci ' + L.ns + ' singur.' : (st.p ? 'Completezi ' + L.nf + ' exerciții, apoi faci ' + L.ns + ' singur.' : 'Vezi 2 exemple, completezi ' + L.nf + ' exerciții, apoi faci ' + L.ns + ' singur.')) +
+      ' <b>1 stea:</b> ai terminat nivelul. <b>2 stele:</b> ' + need2(L) + ' din ' + L.ns + ' corecte singur. Se deschide nivelul următor. <b>3 stele:</b> toate ' + L.ns + ' corecte și ' + need2(L) + ' fulgere.';
   return '<div class="intro card"><div class="zrow">' + zeroMini('point') + '<span class="tag">' + w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (r.li + 1)) + '</span></div><h2>' + L.name + '</h2><div class="rule">' + esc(L.rule) + '</div><p class="small">' + what + '</p>' +
-    '<p class="small">Scrii rezultatul și apeși <b>OK</b>. Contează primul răspuns.</p>' + (st.s ? '<p class="small muted">Stelele tale: ' + starsHTML(st.s) + '</p>' : '') + '</div>';
+    '<p class="small">Un fulger ' + ICON.bolt + ' = corect în cel mult ' + fastText(L) + '. Scrii rezultatul și apeși <b>OK</b>. Contează primul răspuns.</p>' +
+    (r.farm ? '<p class="small muted">Ai deja 3 stele aici, deci primești mai puține puncte. Punctele mari vin din niveluri noi, din Runda zilei și din recorduri.</p>' : '') +
+    (st.s ? '<p class="small muted">Stelele tale: ' + starsHTML(st.s) + '</p>' : '') + '</div>';
 }
 function introButtons(L) {
   const st = lvState(L.id);
+  if (RUN && RUN.practice) return btn('quit', 'Mai târziu', false) + btn('lbegin', 'Începem', true, 'data-demo="0"');
   if (L.boss) return btn('lbegin', 'Începem', true, 'data-demo="0"');
   if (st.p) return btn('lbegin', 'Cu exemple', false, 'data-demo="1"') + btn('lbegin', 'Începem', true, 'data-demo="0"');
   return btn('lbegin', 'Începem', true, 'data-demo="1"');
@@ -2067,7 +2248,7 @@ function levelChoice(idx) {
 function slotRight() {
   const r = RUN, f = r.fill, i = f.active, sl = r.entry.it.slots[i];
   f.vals[i] = sl.v; f.st[i] = 'ok'; f.just = i;
-  if (!f.tries) { S.xp += 2; r.stats.xp += 2; }
+  if (!f.tries) { const p = ptsOf(r, 2); S.xp += p; r.stats.xp += p; }
   SFX.slot(f.st.filter(s => s === 'ok' || s === 'helped').length - 1);
   fillActivate();
   if (f.active < 0) { fillDone(); return; }
@@ -2093,7 +2274,7 @@ function fillDone() {
   if (perfect) { r.combo++; r.stats.perfect++; r.stats.best = Math.max(r.stats.best, r.combo); } else r.combo = 0;
   // Daca jocul a aratat un raspuns („Uite ce trebuia”), copilul doar l-a copiat: 1 punct.
   const shown = f.st.includes('helped');
-  const pts = perfect ? 10 : (shown ? 1 : 5); S.xp += pts; r.stats.xp += pts;
+  const pts = ptsOf(r, perfect ? 10 : (shown ? 1 : 5)); S.xp += pts; r.stats.xp += pts;
   save();
   renderLevel(); f.just = -1;
   if (shown) setFb('Acum o știi. Data viitoare încearcă singur. +' + pts, 'info');
@@ -2102,7 +2283,7 @@ function fillDone() {
 }
 function soloHTML(r, it, L) {
   const counted = r.plan.filter(e => e.mode === 'solo' && !e.extra), pos = counted.indexOf(r.plan[r.i]) + 1;
-  const tag = r.entry.extra ? 'Încă o dată' : (r.daily ? 'Runda zilei · ' : (L.boss ? 'Nivelul final · ' : 'Singur · ')) + pos + ' din ' + counted.length;
+  const tag = r.entry.extra ? 'Încă o dată · exercițiu, nu se pune la stele' : (r.daily ? 'Runda zilei · ' : (L.boss ? 'Nivelul final · ' : 'Singur · ')) + pos + ' din ' + counted.length;
   return '<div class="ask"><span class="tag">' + tag + '</span><div class="q' + qLen(it.q) + '"><span class="qt">' + it.q + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div>' +
     '<div class="fb" id="fb"></div></div>';
 }
@@ -2121,7 +2302,7 @@ function soloKey(k) {
 }
 const FIX_MSGS = ['Nu-i nimic. Uite cum se face:', 'Aproape. Hai să vedem pașii:', 'Îl prindem acum:'];
 function levelSubmit(kind) {
-  const r = RUN; if (!r || r.locked) return;
+  const r = RUN; if (!r || r.locked || (r.phase !== 'solo' && r.phase !== 'fix')) return;
   const e = r.entry, it = e.it, L = lvOf(r);
   if (kind !== 'skip' && blank(r.input)) return;
   const correct = kind !== 'skip' && parseInput(r.input) === it.ans;
@@ -2130,14 +2311,14 @@ function levelSubmit(kind) {
     else { SFX.soft(); shakeBox(); r.input = ''; updateBox(); r.covered = false; const lc = $('#lc'); if (lc) lc.classList.remove('covered'); setFb('Mai uită-te o dată, apoi scrie.', 'info'); }
     return;
   }
-  const dt = typedAt(r) - r.t0, fast = correct && dt <= L.fast, day = today();
+  const dt = typedAt(r) - r.t0, fast = correct && dt <= fastOf(L, it), day = today();
   day.q++; day.ms += Math.min(now() - r.t0, 30000); if (correct) day.ok++;
   logAns(L.id, it.q, r.input, correct, dt, false);
-  if (e.counted) { r.stats.n++; if (correct) { r.stats.ok++; if (fast) r.stats.fast++; } e.counted = false; }
+  if (e.counted) { r.stats.n++; if (correct) { r.stats.ok++; if (fast) r.stats.fast++; } else noteMiss(r, it); e.counted = false; }
   if (it.fk) famUpdate(it.fk.m, it.fk.k, { correct, dt });
   if (correct) {
     r.combo++; r.stats.best = Math.max(r.stats.best, r.combo);
-    const pts = 10 + (fast ? 5 : 0); S.xp += pts; r.stats.xp += pts;
+    const pts = ptsOf(r, 10 + (fast ? 5 : 0)); S.xp += pts; r.stats.xp += pts;
     const bx = $('#box'); if (bx) bx.classList.add(fast ? 'fast' : 'ok');
     save(); reward(true, fast, pts, bx, L.praise);
     r.locked = true; later(levelNext, fast ? 650 : 850);
@@ -2153,6 +2334,8 @@ function levelSubmit(kind) {
   const toFix = xy ? () => vecStart(xy[0], xy[1], r.lastWrong, it) : () => { r.phase = 'fix'; r.input = ''; r.covered = false; r.locked = false; renderLevel(); };
   if (kind === 'skip') toFix(); else { SFX.bad(); shakeBox('bad'); r.locked = true; later(toFix, 420); }
 }
+// La nivelul final ține minte ce a greșit, pentru runda de exersat dinainte de o nouă încercare.
+function noteMiss(r, it) { if (lvOf(r).boss && !r.daily && r.miss.length < 20) r.miss.push(it.src ? { src: it.src } : (it.fk ? { fk: it.fk.k } : {})); }
 function soloTruc() {
   const r = RUN; if (!r || r.phase !== 'solo' || r.locked) return;
   const e = r.entry;
@@ -2161,25 +2344,41 @@ function soloTruc() {
   if (e.it.fk) famUpdate(e.it.fk.m, e.it.fk.k, { correct: false, dt: now() - r.t0 });
   if (r.extra < 3) { r.plan.splice(Math.min(r.plan.length, r.i + 4), 0, { mode: 'solo', it: e.it, extra: true, L: e.L }); r.extra++; }
   save();
-  if (e.counted) { r.stats.n++; e.counted = false; }
+  if (e.counted) { r.stats.n++; noteMiss(r, e.it); e.counted = false; }
   r.combo = 0; updateCombo();
   e.helpMode = true; r.phase = 'fill'; startFill(e.it.slots.length); r.fill.perfect = false;
   renderLevel();
+  setFb('N-ai scris nimic la timp, așa că îl facem împreună, pas cu pas. Nu se pune la stele.', 'info');
 }
 function finishLevel() {
   if (RUN && RUN.daily) { finishDaily(); return; }
+  if (RUN && RUN.practice) { finishPractice(); return; }
   const r = RUN, L = lvOf(r), n = L.ns, rec = recordLevel(L, r.stats.ok, r.stats.fast), stars = rec.stars, prev = rec.prev;
-  const bonus = 30 + 10 * stars; S.xp += bonus; r.stats.xp += bonus;
+  const bonus = ptsOf(r, 30 + 10 * stars); S.xp += bonus; r.stats.xp += bonus;
   today().r++;
   const w = WORLDK[r.wid], nextL = w.levels[r.li + 1];
   const unlocked = stars >= 2 && prev < 2 && nextL ? nextL : null, trophy = L.boss && stars >= 2 && prev < 2 ? L.trophy : null;
+  // Nivelul final picat (și netrecut înainte): data viitoare, întâi o rundă scurtă cu greșelile de acum.
+  if (L.boss) { const st = S.lv[L.id]; if (stars < 2 && prev < 2) { st.need = 1; st.miss = r.miss.slice(0, 20); } else { delete st.need; delete st.miss; } }
   save();
-  const res = { wid: r.wid, li: r.li, L, stars, prev, ok: r.stats.ok, fast: r.stats.fast, n, xp: r.stats.xp, best: r.stats.best, unlocked, trophy, newWorlds: rec.newWorlds, rankUp: levelOf(S.xp) > levelOf(r.xp0) ? levelOf(S.xp) : 0 };
+  const res = { wid: r.wid, li: r.li, L, stars, prev, ok: r.stats.ok, fast: r.stats.fast, n, xp: r.stats.xp, best: r.stats.best, unlocked, trophy, newWorlds: rec.newWorlds, rankUp: levelOf(S.xp) > levelOf(r.xp0) ? levelOf(S.xp) : 0, farm: r.farm };
   RUN = null; closePlay();
   renderLevelDone(res); show('done');
   for (let i = 0; i < stars; i++) setTimeout(() => SFX.star(i), 380 + i * 380);
   if (stars >= 2) setTimeout(confetti, 420 + stars * 380);
   if (unlocked || trophy || rec.newWorlds.length) setTimeout(SFX.unlock, 1100 + stars * 380);
+}
+// Runda de exersat de dinaintea unei noi încercări la nivelul final: nu dă stele, dar deschide din nou nivelul final.
+function finishPractice() {
+  const r = RUN, L = lvOf(r), st = lvState(L.id);
+  delete st.need; delete st.miss; S.lv[L.id] = st;
+  const bonus = 20; S.xp += bonus; r.stats.xp += bonus; today().r++; save();
+  RUN = null; closePlay();
+  el.done.innerHTML = '<div class="hero"><span class="tag">' + WORLDK[r.wid].name + ' · exersat</span><button class="zdonebtn" type="button" data-act="zhop" aria-label="Atinge-l pe Zero">' + zeroSvg('cheer') + '</button><h1>Gata, ai exersat!</h1>' +
+    '<p>' + r.stats.perfect + ' din ' + r.plan.length + ' le-ai făcut fără nicio greșeală · +' + r.stats.xp + ' puncte</p></div>' +
+    '<p class="center">Acum încearcă din nou nivelul final. Îți trebuie ' + GATE_OK + ' corecte din 20.</p>' +
+    '<div class="btnrow">' + btn('world', 'Drumul nivelurilor', false, 'data-w="' + r.wid + '"') + btn('level', 'Nivelul final', true, 'data-w="' + r.wid + '" data-l="' + r.li + '"') + '</div>';
+  show('done'); SFX.win();
 }
 function bigStars(n) { return '<div class="bigstars" role="img" aria-label="' + nr(n, 'stea', 'stele') + ' din 3">' + [0, 1, 2].map(i => '<svg viewBox="0 0 24 24" class="' + (i < n ? 'on' : 'off') + '" style="animation-delay:' + (0.35 + i * 0.38) + 's" aria-hidden="true"><path d="' + STAR_D + '"/></svg>').join('') + '</div>'; }
 function renderLevelDone(res) {
@@ -2187,17 +2386,24 @@ function renderLevelDone(res) {
   const title = res.stars === 3 ? 'Perfect!' : (res.stars === 2 ? 'Nivel trecut!' : 'Nivel terminat!');
   let h = '<div class="hero"><span class="tag">' + w.name + ' · ' + (L.boss ? 'nivelul final' : 'nivelul ' + (res.li + 1)) + '</span><button class="zdonebtn" type="button" data-act="zhop" aria-label="Atinge-l pe Zero">' + zeroSvg(res.stars === 3 ? 'wow' : (res.stars === 2 ? 'cheer' : 'idle')) + '</button><h1>' + title + '</h1>' + bigStars(res.stars) +
     '<p>' + res.ok + ' din ' + res.n + ' corecte singur · ' + nr(res.fast, 'fulger', 'fulgere') + '</p></div>';
-  h += '<div class="tiles"><div class="tilestat"><b>+' + res.xp + '</b><span>puncte</span></div><div class="tilestat"><b>' + res.best + '</b><span>la rând, maxim</span></div><div class="tilestat"><b>' + res.stars + '/3</b><span>stele</span></div></div>';
+  // Stelele de acum și cele mai bune: o încercare slabă la un nivel trecut nu ia nimic înapoi (2026-10-27).
+  const bestS = Math.max(res.prev, res.stars), passed = bestS >= 2, failed = res.stars < 2;
+  h += '<div class="tiles"><div class="tilestat"><b>+' + res.xp + '</b><span>puncte</span></div><div class="tilestat"><b>' + res.best + '</b><span>la rând, maxim</span></div>' +
+    (bestS > res.stars ? '<div class="tilestat"><b>' + bestS + '/3</b><span>stele, cel mai bun</span></div>' : '<div class="tilestat"><b>' + res.stars + '/3</b><span>stele</span></div>') + '</div>';
   if (res.rankUp) h += '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + res.rankUp + ', ' + rankName(res.rankUp) + '!</p>';
   if (res.trophy) h += '<div class="unlock gold">' + ICON.trophy + '<div><b>Trofeu nou: ' + res.trophy + '!</b><div class="small muted">Ai terminat lumea „' + w.name + '”.</div></div></div>';
   if (res.unlocked) h += '<div class="unlock">' + ICON.unlock + '<div><b>Nivel nou deschis:</b> ' + res.unlocked.name + '</div></div>';
   res.newWorlds.forEach(w2 => { h += '<div class="unlock gold">' + ICON.unlock + '<div><b>Lume nouă deschisă: ' + w2.name + '!</b><div class="small muted">Ai trecut nivelul final cu ' + res.ok + ' corecte.</div></div></div>'; });
+  const need = L.boss ? GATE_OK : need2(L), close = res.ok >= need - 2;
+  const practice = L.boss && failed && !passed ? ' Data viitoare faci întâi ' + nr(PRACTICE_N, 'calcul', 'calcule') + ' exact de felul celor greșite, cu pașii.' : '';
   // Nivelul final încă nu deschide lumea următoare: îi spune exact cât îi mai trebuie.
   const waiting = L.boss && !worldPassed(res.wid) ? worldsAfter(res.wid).filter(w2 => !worldOpen(w2.id)) : [];
-  if (waiting.length) h += '<div class="card"><b>' + (res.ok >= GATE_OK - 2 ? 'Aproape!' : 'Mai exersează!') + '</b> Pentru ' + waiting.map(w2 => '„' + w2.name + '”').join(' și ') + ' îți trebuie 2 stele: ' + GATE_OK + ' corecte din 20. Acum ai ' + res.ok + '. Mai încearcă!</div>';
-  else if (res.stars < 2) h += '<div class="card"><b>' + (res.ok >= need2(L) - 2 ? 'Aproape!' : 'Mai exersează!') + '</b> ' + (L.boss ? 'Pentru' : 'Pentru nivelul următor îți trebuie') + ' 2 stele' + (L.boss ? ' îți trebuie' : '') + ': ' + need2(L) + ' din ' + L.ns + ' corecte când lucrezi singur. Acum știi trucul. Mai încearcă!</div>';
-  else if (res.stars === 2) h += '<p class="small muted center">Pentru 3 stele: ' + (L.boss ? '19 din 20 corecte și 15 fulgere' : 'toate ' + L.ns + ' corecte și ' + need2(L) + ' fulgere') + '. Poți reveni oricând.</p>';
-  const primary = res.stars < 2 ? btn('level', 'Mai încearcă', true, 'data-w="' + res.wid + '" data-l="' + res.li + '"')
+  if (failed && passed) h += '<div class="card"><b>Nu ai pierdut nimic.</b> Aici ai deja ' + nr(bestS, 'stea', 'stele') + '. De data asta: ' + res.ok + ' din ' + res.n + ' corecte.</div>';
+  else if (waiting.length) h += '<div class="card"><b>' + (close ? 'Aproape!' : 'Mai exersează!') + '</b> Pentru ' + waiting.map(w2 => '„' + w2.name + '”').join(' și ') + ' îți trebuie 2 stele: ' + GATE_OK + ' corecte din 20. Acum ai ' + res.ok + '.' + practice + '</div>';
+  else if (failed) h += '<div class="card"><b>' + (close ? 'Aproape!' : 'Mai exersează!') + '</b> ' + (L.boss ? 'Pentru 2 stele și trofeu' : 'Pentru 2 stele și nivelul următor') + ' îți trebuie ' + need + ' din ' + res.n + ' corecte când lucrezi singur. Acum ai ' + res.ok + '.' + (practice || ' Acum știi trucul. Mai încearcă!') + '</div>';
+  else if (res.stars === 2) h += '<p class="small muted center">Pentru 3 stele: ' + (L.boss ? '19 din 20 corecte și 15 fulgere' : 'toate ' + L.ns + ' corecte și ' + need2(L) + ' fulgere') + '. Un fulger = corect în cel mult ' + fastText(L) + '. Poți reveni oricând.</p>';
+  if (res.farm) h += '<p class="small muted center">Nivel cu 3 stele, rejucat: puncte mai puține. Punctele mari vin din niveluri noi și din Runda zilei.</p>';
+  const primary = failed && !passed ? btn('level', practice ? 'Exersează greșelile' : 'Mai încearcă', true, 'data-w="' + res.wid + '" data-l="' + res.li + '"')
     : (nextL ? btn('level', 'Nivelul următor', true, 'data-w="' + res.wid + '" data-l="' + (res.li + 1) + '"') : btn('home', 'Acasă', true));
   h += '<div class="btnrow">' + btn('world', 'Drumul nivelurilor', false, 'data-w="' + res.wid + '"') + primary + '</div>';
   el.done.innerHTML = h;
@@ -2267,7 +2473,7 @@ function vecCheck() {
   // Harta află și de vecini: un vecin greșit devine „de lucrat”.
   if (o.fk) famUpdate('mul', o.fk.k, { correct, dt: typedAt(r) - v.ta, hinted: true });
   if (correct) {
-    o.st = 'ok'; S.xp += 2; r.stats.xp += 2; save(); SFX.ok();
+    o.st = 'ok'; { const p = ptsOf(r, 2); S.xp += p; r.stats.xp += p; } save(); SFX.ok();
     v.st = 'bridge'; vecFill(nbBridge(v.x, v.y, o));
     renderVec(); updatePts();
     return;
@@ -2287,7 +2493,7 @@ function vecNextSlot() { const r = RUN, f = r.vec.f, i = f.st.indexOf('blank'); 
 function vecRight() {
   const r = RUN, v = r.vec, f = v.f, i = f.active;
   f.vals[i] = v.it.slots[i].v; f.st[i] = 'ok'; f.just = i;
-  if (!f.tries) { S.xp += 2; r.stats.xp += 2; }
+  if (!f.tries) { const p = ptsOf(r, 2); S.xp += p; r.stats.xp += p; }
   SFX.slot(f.st.filter(s => s === 'ok' || s === 'helped').length - 1);
   vecNextSlot();
   if (f.active < 0) { vecDone(); return; }
@@ -2319,20 +2525,23 @@ function vecDone() {
 /* =====================================================================
    TESTUL DE PORNIRE
    ===================================================================== */
+// Testul: pentru fiecare nivel, TEST_N întrebări (r.items); r.n = a câta, r.ans = răspunsurile de până acum
+// ({ c: corect, f: rapid }). Pauza păstrează și întrebarea la care a rămas (2026-10-27).
 function startTest() {
   const p = S.test.partial;
   RUN = { kind: 'test', phase: 'intro', list: testList(), at: p ? p.at : 0, res: p ? Object.assign({}, p.res) : {}, xrow: p ? Object.assign({}, p.xrow) : {}, stop: p ? Object.assign({}, p.stop) : {},
-    tries: 0, it: null, input: '', t0: 0, locked: false, lastQ: '', stats: { q: 0, ok: 0, xp: 0 }, xp0: S.xp };
+    n: p && p.n ? p.n : 0, ans: p && p.ans ? p.ans.slice() : [], items: p && p.items ? p.items : null, it: null, input: '', t0: 0, locked: false, stats: { q: 0, ok: 0, xp: 0 }, xp0: S.xp };
   openPlay();
 }
+function testSave() { const r = RUN; S.test.partial = { at: r.at, res: r.res, xrow: r.xrow, stop: r.stop, n: r.n, ans: r.ans, items: r.items }; save(); }
 function renderTest() {
   const r = RUN;
   el.keys.classList.remove('off');
   if (r.phase === 'intro') {
-    const p = S.test.partial;
+    const p = S.test.partial && (S.test.partial.at || S.test.partial.n) ? S.test.partial : null;
     el.stage.innerHTML = '<div class="intro card"><span class="tag">Testul de pornire</span><h2>' + (p ? 'Continuăm testul' : 'Hai să vedem ce știi deja') + '</h2>' +
-      '<p>Calcule din toate lumile: tabla, împărțiri, adunări și scăderi, numere mari și negative. Cam 10 minute. Poți face pauză: data viitoare continui de unde ai rămas.</p>' +
-      '<p>Scrii rezultatul și apeși <b>OK</b>. Contează primul răspuns. Dacă nu știi, scrie ce crezi. E în regulă: așa aflăm de unde începi.</p>' +
+      '<p>Calcule din toate cele 6 lumi: adunări și scăderi, tabla, numere mari, împărțiri, numere negative și ordinea operațiilor. Câte 2 calcule din fiecare nivel. Cam 10–15 minute. Poți face pauză: data viitoare continui de unde ai rămas.</p>' +
+      '<p>Scrii rezultatul și apeși <b>OK</b>. Dacă nu știi, scrie ce crezi. E în regulă: așa aflăm de unde începi. Dacă greșești la două niveluri la rând într-o lume, trecem la lumea următoare.</p>' +
       '<label class="small" for="nume">Numele tău (apare doar în raportul pe care îl trimiți):</label><input class="name" id="nume" type="text" autocomplete="given-name" maxlength="30" value="' + esc(S.name || '') + '"></div>';
     setDock('actions', btn('tbegin', p ? 'Continuăm' : 'Începem testul', true));
     return;
@@ -2348,14 +2557,15 @@ function testBegin() {
 }
 function testNext() {
   const r = RUN;
-  while (r.at < r.list.length) { const t = r.list[r.at], L = WORLDK[t.wid].levels[t.li]; if (r.stop[t.wid]) { r.res[L.id] = '-'; r.at++; continue; } break; }
+  while (r.at < r.list.length) { const t = r.list[r.at], L = WORLDK[t.wid].levels[t.li]; if (r.stop[t.wid]) { r.res[L.id] = '-'; r.at++; r.n = 0; r.ans = []; r.items = null; continue; } break; }
   if (r.at >= r.list.length) { finishTest(); return; }
-  r.tries = 0; testAsk();
+  testAsk();
 }
 function testAsk() {
   const r = RUN, t = r.list[r.at], L = WORLDK[t.wid].levels[t.li];
-  let it, k = 0; do { it = L.make(L.pool()[0]); } while (it.q === r.lastQ && ++k < 6);
-  r.lastQ = it.q; r.it = it; r.input = ''; r.locked = false; r.phase = 'q'; r.t0 = now();
+  // Cele două întrebări ale nivelului se aleg o dată și se țin minte, ca pauza să nu schimbe întrebarea.
+  if (!r.items || r.items.length < TEST_N) { r.items = testPair(L).map(it => ({ q: it.q, ans: it.ans, fk: it.fk })); testSave(); }
+  r.it = r.items[r.n]; r.input = ''; r.locked = false; r.phase = 'q'; r.t0 = now();
   renderTest(); updateBar();
 }
 function testKey(k) {
@@ -2373,22 +2583,25 @@ function testSubmit(kind) {
   logAns('test:' + L.id, it.q, r.input, correct, dt, false);
   if (correct) { r.stats.ok++; day.ok++; S.xp += 5; r.stats.xp += 5; }
   if (it.fk) famUpdate(it.fk.m, it.fk.k, { correct, dt, place: S.modes[it.fk.m].f[it.fk.k].n === 0 });
-  r.tries++;
-  const v = testVerdict(correct, fast, r.tries);
+  r.ans.push({ c: correct ? 1 : 0, f: fast ? 1 : 0 }); r.n++;
+  // Un răspuns greșit hotărăște nivelul (de învățat); altfel, după TEST_N răspunsuri: știe repede sau încet.
+  const v = !correct || r.n >= TEST_N ? testVerdict(r.ans) : null;
   if (v) {
     r.res[L.id] = v;
     if (v === 'x') { r.xrow[t.wid] = (r.xrow[t.wid] || 0) + 1; if (r.xrow[t.wid] >= 2) r.stop[t.wid] = true; } else r.xrow[t.wid] = 0;
-    r.at++;
+    r.at++; r.n = 0; r.ans = []; r.items = null;
   }
-  S.test.partial = { at: r.at, res: r.res, xrow: r.xrow, stop: r.stop }; save();
+  testSave();
   if (correct) { SFX.ok(); const bx = $('#box'); if (bx) bx.classList.add('ok'); setFb('Corect!', 'ok'); } else setFb('Notat. Mergem mai departe.', 'info');
   updatePts(); r.locked = true;
-  later(() => { if (v) testNext(); else testAsk(); }, correct ? 450 : 700);
+  later(testNext, correct ? 450 : 700);
 }
 function finishTest() {
   const r = RUN;
-  applyTest(r.res);
-  S.test = { done: true, date: dayKey(), res: Object.assign({}, r.res), partial: null };
+  // La un test refăcut, fiecare nivel păstrează cel mai bun verdict: nu se închide nimic din ce era deschis.
+  const res = S.test.done ? mergeTest(S.test.res, r.res) : Object.assign({}, r.res);
+  applyTest(res);
+  S.test = { done: true, skip: !!S.test.skip, date: dayKey(), res, partial: null };
   today().r++;
   save();
   const rankUp = levelOf(S.xp) > levelOf(r.xp0) ? levelOf(S.xp) : 0;
@@ -2400,9 +2613,12 @@ function testResultsHTML() {
     WORLDS.map(w => '<section class="card"><h3>' + w.name + '</h3><div class="chips">' + w.levels.filter(L => !L.boss).map(L => { const v = res[L.id] || '-'; return '<span class="chip ' + ({ k: 'k', s: 's', x: 'x' }[v] || 'u') + '">' + L.name + '</span>'; }).join('') + '</div></section>').join('');
 }
 function renderTestDone(rankUp) {
-  const res = S.test.res, list = testList(), known = list.filter(t => res[WORLDK[t.wid].levels[t.li].id] === 'k').length;
-  const opened = WORLDS.filter(w => WORLD_NEEDS[w.id].length && !worldMissing(w.id).length);
-  el.done.innerHTML = '<div class="hero"><span class="tag">Testul de pornire</span><h1>Testul e gata!</h1><p>Știi deja <b>' + known + ' din ' + nr(list.length, 'tip', 'tipuri') + '</b> de calcule. Nivelurile pe care le știi s-au deschis cu 2 stele.</p></div>' +
+  // Corect și încet tot înseamnă că știe (2026-10-27): le numără pe amândouă, iar viteza o spune separat.
+  const res = S.test.res, list = testList(), v = t => res[WORLDK[t.wid].levels[t.li].id];
+  const fastN = list.filter(t => v(t) === 'k').length, slowN = list.filter(t => v(t) === 's').length;
+  const opened = WORLDS.filter(w => WORLD_NEEDS[w.id].length && worldOpen(w.id));
+  el.done.innerHTML = '<div class="hero"><span class="tag">Testul de pornire</span><h1>Testul e gata!</h1><p>Știi deja <b>' + (fastN + slowN) + ' din ' + nr(list.length, 'tip', 'tipuri') + '</b> de calcule' + (slowN ? ' (' + slowN + ' încă încet)' : '') + '.' +
+    (fastN ? ' Cele știute repede au primit 2 stele.' : '') + (slowN ? ' Cele știute încet le exersezi ca să devină rapide.' : '') + '</p></div>' +
     (rankUp ? '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + rankUp + ', ' + rankName(rankUp) + '!</p>' : '') +
     (opened.length ? '<div class="unlock gold">' + ICON.unlock + '<div><b>' + (opened.length === 1 ? 'Lume deschisă: ' : 'Lumi deschise: ') + opened.map(w => w.name).join(', ') + '!</b><div class="small muted">Le-ai deschis cu ce știi deja.</div></div></div>' : '') +
     testResultsHTML() + '<p class="center">Începi de aici:</p>' + ctaHTML() +
@@ -2447,7 +2663,7 @@ function next() {
 function renderStage() {
   const r = RUN, q = r.q, ph = r.phase;
   setDock('keys');
-  el.keys.classList.add('nominus');
+  el.keys.classList.toggle('nominus', !(r.kind === 'sprint' && r.minus));
   el.keys.classList.toggle('off', ph === 'intro' || ph === 'count');
   if (ph === 'vec') { renderVec(); return; }
   if (ph === 'intro') { el.stage.innerHTML = r.kind === 'sprint' ? sprintIntroHTML() : placeIntroHTML(); return; }
@@ -2457,8 +2673,8 @@ function renderStage() {
   const it = r.items[r.i];
   let tag = '';
   if (ph === 'place') tag = '<span class="tag">Harta ta · ' + (r.i + 1) + ' din ' + r.items.length + '</span>';
-  else if (ph === 'sprint') tag = '<span class="tag">Corecte: ' + r.score + ' · ' + (r.i + 1) + ' din 30</span>';
-  else if (it && it.rep) tag = '<span class="tag">Încă o dată</span>';
+  else if (ph === 'sprint') tag = '<span class="tag">Corecte: ' + r.score + ' · ' + (r.i + 1) + ' din ' + r.items.length + '</span>';
+  else if (it && it.rep) tag = '<span class="tag">Încă o dată · exercițiu</span>';
   const btns = ph === 'sprint' ? '<button class="pill" type="button" data-act="skip">Sari</button>' : '';
   el.stage.innerHTML = '<div class="ask">' + tag +
     '<div class="q' + qLen(q.text) + '" id="qq"><span class="qt">' + q.text + '</span><span class="eqs">=</span><span class="box empty" id="box"></span></div>' +
@@ -2473,10 +2689,12 @@ function placeIntroHTML() {
     '<button class="btn primary" type="button" data-act="begin">Începem</button></div>';
 }
 function sprintIntroHTML() {
-  const rec = sprintRecord();
-  return '<div class="intro card"><span class="tag">Sprint · un minut</span><h2>Câte faci într-un minut?</h2>' +
-    '<p>Aceleași 30 de calcule ca pe foaie, în aceeași ordine. Scrii rezultatul și apeși <b>OK</b>, repede, fără degete. Dacă nu știi unul, apasă <b>„Sari”</b>.</p>' +
-    '<p class="muted">' + (rec ? 'Recordul tău: <b>' + rec + '</b>. ' : '') + 'Ținta: <b>' + SPRINT_TARGET + '</b>.</p>' +
+  const r = RUN, w = r.sw, rec = sprintRecord(w), paper = w === 'mul' && r.items.length === 30 && r.items.every((it, i) => it.q === SPRINT[i][0] + ' ' + DOT + ' ' + SPRINT[i][1]);
+  const what = w === 'mul' ? (paper ? 'Aceleași 30 de calcule ca pe foaie, în aceeași ordine.' : '30 de calcule din nivelurile de tablă pe care le-ai trecut.')
+    : nr(r.items.length, 'calcul', 'calcule') + ' din nivelurile pe care le-ai trecut' + (w === 'mix' ? ', din mai multe lumi.' : '.');
+  return '<div class="intro card"><span class="tag">Sprint · ' + SPRINT_NAME[w] + ' · un minut</span><h2>Câte faci într-un minut?</h2>' +
+    '<p>' + what + ' Scrii rezultatul și apeși <b>OK</b>, repede, fără degete. Dacă nu știi unul, apasă <b>„Sari”</b>.</p>' +
+    '<p class="muted">' + (rec ? 'Recordul tău: <b>' + rec + '</b>. Ținta ta: <b>' + (rec + 1) + '</b>.' : 'E primul tău sprint aici: orice scor e un record.') + (w === 'mul' ? ' Ținta mare: <b>' + SPRINT_TARGET + '</b>.' : '') + '</p>' +
     '<button class="btn primary" type="button" data-act="go">Start</button></div>';
 }
 function learnHTML() {
@@ -2499,8 +2717,10 @@ function trainKey(k) {
   const r = RUN; if (!r || r.locked) return;
   const ph = r.phase;
   if (['ask', 'place', 'teach', 'fix', 'sprint'].indexOf(ph) < 0) return;
+  // Sprintul s-a terminat (ceasul a trecut de minut): nicio cifră nouă nu mai intră.
+  if (ph === 'sprint' && now() - r.started >= SPRINT_MS) { sprintEnd(false); return; }
   if (k === 'ok') { submit('ok'); return; }
-  if (!typeInto(k, false)) return;
+  if (!typeInto(k, ph === 'sprint' && !!r.minus)) return;
   if (k !== 'back' && (ph === 'teach' || ph === 'fix') && !r.covered) { r.covered = true; const lc = $('#lc'); if (lc) lc.classList.add('covered'); }
   updateBox();
 }
@@ -2525,13 +2745,16 @@ function submit(kind) {
   }
 
   const dt = typedAt(r) - r.t0, it = r.items[r.i], day = today();
-  logAns(ph === 'sprint' ? 'sprint' : (ph === 'place' ? 'harta-' : 'antr-') + r.mode, q.text, kind === 'skip' ? '' : r.input, correct, dt, r.hinted);
   if (ph === 'sprint') {
-    famUpdate('mul', Math.min(it.a, it.b) + 'x' + Math.max(it.a, it.b), { correct, dt, sprint: true });
-    if (correct) { r.score++; SFX.ok(); const bx = $('#box'); if (bx) bx.classList.add('ok'); r.locked = true; later(sprintNext, 170); }
-    else { r.wrong.push({ t: q.text, a: q.ans }); if (kind !== 'skip') { SFX.bad(); shakeBox('bad'); } r.locked = true; later(sprintNext, kind === 'skip' ? 120 : 300); }
+    // După minut nu mai primește răspunsuri (ceasul a trecut, chiar dacă ecranul încă nu s-a închis).
+    if (now() - r.started >= SPRINT_MS) { sprintEnd(false); return; }
+    if (kind === 'skip') r.input = '';
+    sprintAnswer(correct, dt);
+    if (correct) { SFX.ok(); const bx = $('#box'); if (bx) bx.classList.add('ok'); r.locked = true; later(sprintNext, 170); }
+    else { if (kind !== 'skip') { SFX.bad(); shakeBox('bad'); } r.locked = true; later(sprintNext, kind === 'skip' ? 120 : 300); }
     return;
   }
+  logAns((ph === 'place' ? 'harta-' : 'antr-') + r.mode, q.text, kind === 'skip' ? '' : r.input, correct, dt, r.hinted);
 
   day.ms += Math.min(now() - r.t0, 30000);
   if (ph === 'place') {
@@ -2588,13 +2811,18 @@ function finishRun() {
   S.xp += 20; r.stats.xp += 20;
   save();
   const lvUp = levelOf(S.xp) > levelOf(r.xp0) ? levelOf(S.xp) : 0;
-  const goalNow = day.r === 3 && day.sp > 0;
+  const goalNow = day.r === 3 && (!sprintNeeded() || day.spn > 0 || day.sp > 0);
   RUN = null; closePlay();
   renderDone(r, lvUp); show('done');
   if (lvUp || goalNow) confetti(); else SFX.win();
 }
-function startSprint() {
-  RUN = { kind: 'sprint', mode: 'mul', items: SPRINT.map(p => ({ a: p[0], b: p[1] })), i: -1, phase: 'intro', input: '', score: 0, wrong: [], stats: { xp: 0 }, started: 0, locked: false, q: null, combo: 0 };
+let lastSprint = 'mul';
+function startSprint(w) {
+  if (!sprintOpen(w)) { const o = sprintsOpen(); if (!o.length) { toast('Sprintul se deschide după primul nivel trecut.'); return; } w = o[0]; }
+  lastSprint = w;
+  const items = sprintItems(w);
+  // Tastatura are minus doar dacă vreun calcul poate da un număr negativ.
+  RUN = { kind: 'sprint', mode: 'mul', sw: w, minus: items.some(it => it.ans < 0) || sprintLevels(w).some(L => minusOK(L.wid)), items, i: -1, phase: 'intro', input: '', score: 0, wrong: [], stats: { xp: 0 }, started: 0, locked: false, q: null, combo: 0 };
   openPlay();
 }
 function sprintCountdown() {
@@ -2603,7 +2831,8 @@ function sprintCountdown() {
   let n = 3;
   const tick = () => {
     if (RUN !== r) return;
-    if (n === 0) { r.phase = 'sprint'; r.started = now(); sprintNext(); requestAnimationFrame(sprintTick); return; }
+    // Ceasul de pe ecran merge cu requestAnimationFrame; dacă browserul îl oprește, sprintul se termină oricum la minut.
+    if (n === 0) { r.phase = 'sprint'; r.started = now(); sprintNext(); requestAnimationFrame(sprintTick); later(() => { if (r.phase === 'sprint') sprintEnd(false); }, SPRINT_MS + 50); return; }
     const c = $('#count'); if (c) c.textContent = n;
     SFX.tick(); n--; setTimeout(tick, 650);
   };
@@ -2614,7 +2843,7 @@ function sprintNext() {
   r.i++;
   if (r.i >= r.items.length) { sprintEnd(true); return; }
   const it = r.items[r.i];
-  r.q = { text: it.a + ' ' + DOT + ' ' + it.b, ans: it.a * it.b };
+  r.q = { text: it.q, ans: it.ans };
   r.input = ''; r.locked = false; r.t0 = now();
   renderStage();
 }
@@ -2626,18 +2855,27 @@ function sprintTick() {
   if (left <= 0) { sprintEnd(false); return; }
   requestAnimationFrame(sprintTick);
 }
+// Un răspuns din sprint: scorul, jurnalul și harta (calculele de tablă, împărțiri și adunări au loc pe hartă).
+function sprintAnswer(correct, dt) {
+  const r = RUN, it = r.items[r.i];
+  logAns('sprint:' + r.sw, r.q.text, r.input, correct, dt, false);
+  if (it.fk) famUpdate(it.fk.m, it.fk.k, { correct, dt, sprint: true });
+  if (correct) r.score++; else r.wrong.push({ t: r.q.text, a: fmt(r.q.ans) });
+}
 function sprintEnd(all) {
   const r = RUN; if (!r || r.phase !== 'sprint') return;
+  // Ce a scris în ultima secundă, fără OK, se trimite singur (regula profesorului, 2026-10-22).
+  if (!all && !r.locked && r.q && !blank(r.input) && (r.tk || 0) <= r.started + SPRINT_MS) sprintAnswer(parseInput(r.input) === r.q.ans, typedAt(r) - r.t0);
   r.phase = 'end';
-  const ms = Math.min(SPRINT_MS, Math.round(now() - r.started)), prev = sprintRecord(), k = dayKey();
-  S.sprint.push({ d: k, s: r.score, ms, all: !!all });
+  const w = r.sw, ms = Math.min(SPRINT_MS, Math.round(now() - r.started)), prev = sprintRecord(w), k = dayKey();
+  S.sprint.push({ d: k, s: r.score, ms, all: !!all, w });
   if (S.sprint.length > 500) S.sprint.splice(0, S.sprint.length - 500);
-  const day = today(); day.sp = Math.max(day.sp || 0, r.score); day.ms += ms;
+  const day = today(), first = !day.spn; day.sp = Math.max(day.sp || 0, r.score); day.spn = (day.spn || 0) + 1; day.ms += ms;
   const lv0 = levelOf(S.xp), rec = r.score > prev;
   let xp = r.score * 3; if (rec && prev > 0) xp += 25;
   S.xp += xp;
   save();
-  const res = { score: r.score, ms, all, prev, rec, xp, wrong: r.wrong.slice(), levelUp: levelOf(S.xp) > lv0 ? levelOf(S.xp) : 0, goalNow: day.r >= 3 && S.sprint.filter(x => x.d === k).length === 1 };
+  const res = { w, n: r.items.length, score: r.score, ms, all, prev, rec, xp, wrong: r.wrong.slice(), levelUp: levelOf(S.xp) > lv0 ? levelOf(S.xp) : 0, goalNow: first && day.r >= 3 };
   RUN = null; closePlay();
   renderSprintDone(res); show('done');
   if (res.rec || res.levelUp || res.goalNow) confetti();
@@ -2653,7 +2891,7 @@ function renderDone(r, lvUp) {
     el.done.innerHTML = '<div class="hero"><span class="tag">Harta ta · ' + M.name + '</span><h1>' + (c.known ? 'Știi deja ' + c.known + ' din 36!' : 'Harta ta e gata!') + '</h1>' +
       '<p class="muted">' + (c.known ? 'Verde = știi. Galben = aproape. Gri = de învățat.' : 'Pornim de la început. E în regulă: de aici încolo doar crește.') + '</p></div>' + lvl +
       '<section class="card">' + mapHTML(r.mode) + legendHTML() + '</section>' +
-      '<p class="center">' + (c.by[0] ? 'Ai ' + nr(c.by[0], 'calcul gri', 'calcule gri') + '. La antrenament înveți câte 3 pe rundă, cu trucul lor.' : 'Toată harta e colorată. Acum le facem rapide.') + '</p>' + btns('Prima rundă');
+      '<p class="center">' + (c.by[0] ? 'Ai ' + nr(c.by[0], 'calcul gri', 'calcule gri') + '. La antrenament înveți câteva noi în fiecare rundă, cu trucul lor.' : 'Toată harta e colorată. Acum le facem rapide.') + '</p>' + btns('Prima rundă');
     return;
   }
   const pct = st.q ? st.ok / st.q : 0;
@@ -2662,34 +2900,38 @@ function renderDone(r, lvUp) {
   let body = '<section class="card"><div class="map-head"><h3>Harta</h3><span class="small muted">' + famCounts(r.mode).known + ' din 36 știute</span></div>' + mapHTML(r.mode, { hl: new Set(up.map(f => f.k)) }) + legendHTML() + '</section>';
   if (up.length) body += '<p>' + (up.length === 1 ? 'A crescut pe hartă: ' : 'Au crescut pe hartă: ') + up.slice(0, 10).map(f => '<b>' + famLabel(r.mode, f) + '</b>').join(', ') + '.</p>';
   if (up.some(f => S.modes[r.mode].f[f.k].l === 2)) body += '<p class="small muted">Galbenele devin verzi mâine, dacă le știi din nou. Așa rămân în minte.</p>';
-  const goal = t.r >= 3 ? (t.sp ? 'Ținta de azi e gata. Bravo!' : 'Ai făcut 3 runde azi. Mai e sprintul.') : 'Azi: ' + nr(t.r, 'rundă', 'runde') + ' din 3.';
+  const goal = t.r >= 3 ? (!sprintNeeded() || t.spn || t.sp ? 'Ținta de azi e gata. Bravo!' : 'Ai făcut 3 runde azi. Mai e un sprint.') : 'Azi: ' + nr(t.r, 'rundă', 'runde') + ' din 3.';
   el.done.innerHTML = '<div class="hero"><h1>' + title + '</h1>' + (st.best >= 5 ? '<p class="muted">Cea mai lungă serie: ' + nr(st.best, 'răspuns corect', 'răspunsuri corecte') + ' la rând.</p>' : '') + '</div>' +
     '<div class="tiles"><div class="tilestat"><b>' + st.ok + '/' + st.q + '</b><span>corecte</span></div><div class="tilestat"><b>' + st.fast + '</b><span>fulgere</span></div><div class="tilestat"><b>+' + st.xp + '</b><span>puncte</span></div></div>' +
     lvl + body + '<p class="center">' + goal + '</p>' + btns('Încă o rundă');
 }
 function renderSprintDone(res) {
   const secs = Math.round(res.ms / 1000);
-  el.done.innerHTML = '<div class="hero"><span class="tag">Sprint</span><h1 class="big">' + res.score + '</h1>' +
-    '<p>' + (res.all ? 'corecte din 30. Ai terminat foaia în ' + nr(secs, 'secundă', 'secunde') + '!' : 'calcule corecte într-un minut') + '</p>' +
-    (res.rec ? '<p class="lvlup">' + ICON.bolt + (res.prev ? 'Record nou! Înainte: ' + res.prev + '.' : 'Primul tău record!') + '</p>' : '<p class="muted">Recordul tău: ' + res.prev + '. Ținta: ' + SPRINT_TARGET + '.</p>') + '</div>' +
+  const t = S.days[dayKey()] || { r: 0 };
+  el.done.innerHTML = '<div class="hero"><span class="tag">Sprint · ' + SPRINT_NAME[res.w] + '</span><h1 class="big">' + res.score + '</h1>' +
+    '<p>' + (res.all ? 'corecte din ' + res.n + '. Le-ai terminat pe toate în ' + nr(secs, 'secundă', 'secunde') + '!' : 'calcule corecte într-un minut') + '</p>' +
+    (res.rec ? '<p class="lvlup">' + ICON.bolt + (res.prev ? 'Record nou! Înainte: ' + res.prev + '.' : 'Primul tău record!') + '</p>' : '<p class="muted">Recordul tău: ' + res.prev + '. Ținta ta: ' + (res.prev + 1) + (res.w === 'mul' ? '. Ținta mare: ' + SPRINT_TARGET : '') + '.</p>') + '</div>' +
     (res.levelUp ? '<p class="lvlup">' + ICON.bolt + 'Rang nou: ' + res.levelUp + ', ' + rankName(res.levelUp) + '!</p>' : '') +
-    '<section class="card"><h3>Recordurile mele</h3>' + sprintChart() + '</section>' +
+    (res.goalNow ? '<p class="lvlup">' + ICON.check + 'Ținta de azi e gata!</p>' : (t.r < 3 ? '<p class="small muted center">Sprintul de azi e făcut. Pentru ținta de azi mai ai ' + nr(3 - t.r, 'rundă', 'runde') + '.</p>' : '')) +
+    '<section class="card"><h3>Recordurile mele</h3>' + sprintChart(res.w) + '</section>' +
     (res.wrong.length ? '<section class="card"><h3>De reținut</h3><div class="hardlist">' + res.wrong.map(w => '<span>' + w.t + ' = ' + w.a + '</span>').join('') + '</div></section>' : '') +
-    '<div class="btnrow"><button class="btn" type="button" data-act="home">Acasă</button><button class="btn primary" type="button" data-act="sprint">Încă un sprint</button></div>';
+    '<div class="btnrow"><button class="btn" type="button" data-act="home">Acasă</button><button class="btn primary" type="button" data-act="sprint" data-sw="' + res.w + '">Încă un sprint</button></div>';
 }
-function sprintChart() {
-  const days = sprintDays().slice(-14);
+function sprintChart(w) {
+  const days = sprintDays(w).slice(-14);
   if (!days.length) return '<p class="small muted">Aici apare cel mai bun scor al tău din fiecare zi.</p>';
-  const W = 320, H = 170, L = 24, R = 6, T = 16, Bm = 22, cw = (W - L - R) / 14, y = v => T + (H - T - Bm) * (1 - v / 30), tk = dayKey();
+  // Scara: 0–30, sau mai mult dacă un sprint (40 de calcule) a trecut de 30.
+  const top = Math.min(200, Math.max(30, Math.ceil(Math.max(...days.map(x => +x.best || 0)) / 10) * 10));
+  const W = 320, H = 170, L = 24, R = 6, T = 16, Bm = 22, cw = (W - L - R) / 14, y = v => T + (H - T - Bm) * (1 - v / top), tk = dayKey();
   let s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Cel mai bun scor la sprint, pe zile">';
-  [0, 10, 20, 30].forEach(v => { s += '<line class="ch-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text class="ch-ax" x="' + (L - 5) + '" y="' + (y(v) + 3.5) + '" text-anchor="end">' + v + '</text>'; });
+  range(0, top / 10).map(i => i * 10).forEach(v => { s += '<line class="ch-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text class="ch-ax" x="' + (L - 5) + '" y="' + (y(v) + 3.5) + '" text-anchor="end">' + v + '</text>'; });
   days.forEach((x, i) => {
     const bw = cw * 0.64, cx = L + i * cw + cw * 0.18, top = y(x.best);
     s += '<rect class="ch-bar' + (x.d === tk ? ' now' : '') + '" x="' + cx + '" y="' + top + '" width="' + bw + '" height="' + Math.max(0, y(0) - top) + '" rx="2"/>';
     s += '<text class="ch-v" x="' + (cx + bw / 2) + '" y="' + (top - 3) + '" text-anchor="middle">' + x.best + '</text>';
     s += '<text class="ch-ax" x="' + (cx + bw / 2) + '" y="' + (H - 7) + '" text-anchor="middle">' + x.d.slice(8).replace(/^0/, '') + '</text>';
   });
-  s += '<line class="ch-target" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(SPRINT_TARGET) + '" y2="' + y(SPRINT_TARGET) + '"/><text class="ch-tl" x="' + (L + 3) + '" y="' + (y(SPRINT_TARGET) - 4) + '">ținta ' + SPRINT_TARGET + '</text>';
+  if (w === 'mul') s += '<line class="ch-target" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(SPRINT_TARGET) + '" y2="' + y(SPRINT_TARGET) + '"/><text class="ch-tl" x="' + (L + 3) + '" y="' + (y(SPRINT_TARGET) - 4) + '">ținta mare ' + SPRINT_TARGET + '</text>';
   return s + '</svg><p class="small muted">Sub fiecare bară e ziua din lună.</p>';
 }
 
@@ -2706,8 +2948,12 @@ function renderProgress(tab) {
   } else if (tab === 'lv') {
     body = WORLDS.map(w => { const ws = worldStars(w.id); return '<section class="card"><div class="map-head"><h3>' + w.name + '</h3><span class="small muted">' + ws.passed + ' din ' + ws.n + ' · ' + ws.s + '/' + ws.max + ' stele</span></div>' +
       w.levels.map((L, i) => '<div class="lvline' + (isUnlocked(w.id, i) ? '' : ' locked') + '"><span>' + (L.boss ? 'Final' : (i + 1) + '.') + ' ' + L.name + '</span>' + starsHTML(lvState(L.id).s) + '</div>').join('') + '</section>'; }).join('');
-    body += S.test.done ? '<section class="card"><h3>Testul de pornire · ' + niceDate(S.test.date) + '</h3></section>' + testResultsHTML() + btn('retest', 'Refă testul de pornire', false) : btn('test', 'Fă testul de pornire', true);
-  } else if (tab === 'sprint') body = '<section class="card"><h3>Recordurile mele</h3>' + sprintChart() + '<p class="small muted">Ținta: ' + SPRINT_TARGET + ' corecte într-un minut, fără degete.</p></section>';
+    body += S.test.done ? '<section class="card"><h3>Testul de pornire · ' + niceDate(S.test.date) + '</h3></section>' + testResultsHTML() + btn('retest', S.test.partial ? 'Continuă testul refăcut' : 'Refă testul de pornire', false) : btn('test', S.test.partial ? 'Continuă testul de pornire' : 'Fă testul de pornire', true);
+  } else if (tab === 'sprint') {
+    const ws = SPRINT_W.concat(['mix']).filter(w => sprintDays(w).length);
+    body = ws.length ? ws.map(w => '<section class="card"><h3>Sprint: ' + SPRINT_NAME[w] + '</h3>' + sprintChart(w) + '<p class="small muted">' + sprintTargetText(w) + '</p></section>').join('')
+      : '<section class="card"><p class="small muted">Aici apar recordurile tale după primul sprint.</p></section>';
+  }
   else body = daysHTML();
   el.progress.innerHTML = '<header class="top"><button class="icon-btn" type="button" data-act="home" aria-label="Înapoi">' + ICON.back + '</button><h1 class="h-page">Progresul meu</h1><span style="width:44px"></span></header>' +
     '<nav class="tabs" role="tablist">' + tabs.map(x => '<button class="tab" type="button" role="tab" aria-selected="' + (x[0] === tab) + '" data-act="tab" data-tab="' + x[0] + '">' + x[1] + '</button>').join('') + '</nav>' + body +
@@ -2731,7 +2977,7 @@ function showCell(mode, k) {
   det.innerHTML = '<b>' + famFull(mode, f) + '</b> · ' + STATUS[s.l] + '<br>' + (s.n ? nr(s.n, 'încercare', 'încercări') + ', ' + s.ok + ' corecte · timp mediu ' + avg : 'încă neîntrebat');
 }
 function daysHTML() {
-  const st = streak(), keys = Object.keys(S.days), played = keys.filter(k => S.days[k].q > 0 || S.days[k].sp > 0).length;
+  const st = streak(), keys = Object.keys(S.days), played = keys.filter(k => S.days[k].q > 0 || S.days[k].sp > 0 || S.days[k].spn > 0).length;
   const mins = Math.round(keys.reduce((a, k) => a + (S.days[k].ms || 0), 0) / 60000), d0 = dayIdx(), arr = [];
   for (let i = 13; i >= 0; i--) { const k = idxToKey(d0 - i), x = S.days[k]; arr.push({ k, m: x ? Math.round((x.ms || 0) / 60000) : 0 }); }
   const mx = Math.max(10, ...arr.map(x => x.m)), W = 320, H = 130, L = 8, T = 14, Bm = 20, cw = (W - 2 * L) / 14;
@@ -2751,6 +2997,8 @@ function renderReport() {
   const txt = reportText();
   el.report.innerHTML = '<header class="top"><button class="icon-btn" type="button" data-act="home" aria-label="Înapoi">' + ICON.back + '</button><h1 class="h-page">Raportul</h1><span style="width:44px"></span></header>' +
     '<p>Trimite raportul profesorului: apasă „Copiază”, apoi lipește textul în WhatsApp.</p>' +
+    // Fără nume (a sărit testul de pornire), profesorul n-ar ști al cui e raportul (2026-10-27).
+    (S.name ? '' : '<div class="card"><label class="small" for="repname">Scrie-ți numele, ca profesorul să știe al cui e raportul:</label><input class="name" id="repname" type="text" autocomplete="given-name" maxlength="30">' + btn('setname', 'Pune numele în raport', true) + '</div>') +
     '<pre class="rep" id="reptxt">' + esc(txt) + '</pre>' +
     '<div class="btnrow"><button class="btn primary" type="button" data-act="copy">Copiază</button><a class="btn" href="https://wa.me/?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener">Deschide WhatsApp</a></div>' +
     '<p class="small muted" id="copymsg" aria-live="polite"></p>';
@@ -2774,14 +3022,18 @@ document.addEventListener('click', e => {
   switch (d.act) {
     case 'world': renderWorld(d.w || curWorld); show('world'); break;
     case 'level': startLevel(d.w, +d.l); break;
-    case 'locked': toast('Se deschide cu 2 stele la nivelul ' + d.l + '.'); break;
+    case 'locked': toast(+d.l ? 'Se deschide cu 2 stele la nivelul ' + d.l + '.' : 'Lumea asta e încă închisă.'); break;
+    case 'setname': { const inp = $('#repname'); if (inp && inp.value.trim()) { S.name = inp.value.trim().slice(0, 30); save(); } renderReport(); break; }
     case 'wlocked': toast(worldLockText(d.w)); break;
     case 'train': startTrain(d.mode); break;
-    case 'sprint': startSprint(); break;
+    case 'sprint': startSprint(d.sw || (RUN && RUN.sw) || lastSprint); break;
+    case 'slocked': toast('Sprintul se deschide după primul nivel trecut.'); break;
     case 'daily': startDaily(); break;
     case 'dlocked': toast('Se deschide după primul nivel cu 2 stele.'); break;
     case 'test': startTest(); break;
-    case 'retest': S.test = Object.assign({}, S.test, { done: false, partial: null }); save(); startTest(); break;
+    case 'skiptest': S.test.skip = true; save(); startLevel(WORLDS[0].id, 0); break;
+    // Refă testul: testul vechi rămâne valabil până se termină cel nou (2026-10-27).
+    case 'retest': if (!S.test.partial) { S.test.partial = { at: 0, res: {}, xrow: {}, stop: {}, n: 0, ans: [] }; save(); } startTest(); break;
     case 'home': renderHome(); show('home'); break;
     case 'zwake': zeroWake(b); break;
     case 'zdbg': { const t = Date.now(); zDbg.bt = (zDbg.bt || []).filter(x => t - x < 2000); zDbg.bt.push(t);
@@ -2794,7 +3046,9 @@ document.addEventListener('click', e => {
     case 'report': renderReport(); show('report'); break;
     case 'copy': copyReport(); break;
     case 'sound': soundOn = !soundOn; setPref('sound', soundOn ? '1' : '0'); if (soundOn) { audioUnlock(); SFX.ok(); } renderHome(); break;
-    case 'admin-off': setPref('admin', '0'); ADMIN = false; renderHome(); if (!el.world.hidden) renderWorld(curWorld); toast('Ai ieșit din modul profesor.'); break;
+    case 'admin-off': setPref('admin', '0'); ADMIN = false; useKey(false);
+      if (location.hash === '#profesor') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { location.hash = ''; } }
+      renderHome(); show('home'); toast('Ai ieșit din modul profesor.'); break;
     case 'begin': if (RUN && RUN.phase === 'intro') next(); break;
     case 'go': sprintCountdown(); break;
     case 'skip': if (RUN && RUN.phase === 'sprint') submit('skip'); break;
@@ -2854,6 +3108,9 @@ function resume(data) {
   const r = data.run; if (r.phase === 'gone') return;
   if (r.kind === 'level') { if (!WORLDK[r.wid] || (r.plan && r.i >= 0 && !r.plan[r.i])) return; if (r.plan && r.i >= 0) r.entry = r.plan[r.i]; }
   else if (r.kind !== 'test' && !r.q && r.phase !== 'intro') return;
+  // Un joc salvat de versiunea de dinainte de 2026-10-27 nu are câmpurile noi: le pune, ca să nu se oprească jocul.
+  if (r.kind === 'level') { if (!Array.isArray(r.miss)) r.miss = []; r.farm = !!r.farm; }
+  if (r.kind === 'test' && !Array.isArray(r.ans)) { r.ans = []; r.n = 0; r.items = null; r.phase = 'intro'; }
   RUN = r; RUN.locked = false; RUN.t0 = now();
   if (r.phase === 'vec' && (!r.vec || r.vec.done)) {   // ajutorul era gata: trece la următorul calcul
     r.vec = null; el.play.hidden = false; document.body.classList.add('playing'); updateCombo();
