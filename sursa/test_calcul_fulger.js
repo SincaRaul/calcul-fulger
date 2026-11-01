@@ -199,7 +199,10 @@ const lv8 = CF.WORLDK.add.levels[0], lv12 = CF.WORLDK.mul.levels[0], boss = CF.W
   // jurnalul: fiecare răspuns cu secundele lui
   CF.logAns('mul2', '7 · 2', '14', true, 3456, false); CF.logAns('mul2', '8 · 2', '', false, 10020, true);
   ok(s2.log.length === 2 && s2.log[0].s === 3.5 && s2.log[0].c === 1 && s2.log[1].h === 1 && s2.log[1].a === '', 'jurnalul răspunsurilor');
+  s2.days[CF.dayKey()] = { r: 1, q: 2, ok: 1, ms: 12 * 60000 + 10000, sp: 0, spn: 0 };
   const t2 = CF.reportText();
+  ok(/\nAzi: .* · 12 minute/.test(t2), 'minutele de azi în raport');
+  delete s2.days[CF.dayKey()]; ok(/\nAzi: .* · 0 minute/.test(CF.reportText()), 'raportul fără joc azi');
   ok(t2.indexOf('Secundele de azi') >= 0 && t2.indexOf('8 · 2 → trucul (10 s)') >= 0 && t2.indexOf('7 · 2 → 14 (3,5 s)') >= 0, 'secundele în raport');
   for (let i = 0; i < 4100; i++) CF.logAns('sprint', '2 · 2', '4', true, 1000, false);
   ok(s2.log.length === 4000, 'jurnalul păstrează ultimele 4000 de răspunsuri');

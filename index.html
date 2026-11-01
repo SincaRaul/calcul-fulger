@@ -1433,7 +1433,7 @@ function reportText() {
   const m = famCounts('mul'), out = [];
   out.push('⚡ Calcul Fulger · raport ' + niceDate(k) + (S.name ? ' · ' + S.name : ''));
   out.push('🔥 ' + nr(st.n, 'zi', 'zile') + ' la rând · ' + nr(played, 'zi jucată', 'zile jucate') + ' · ' + nr(mins, 'minut', 'minute') + ' în total');
-  out.push('Azi: ' + nr(t.r, 'rundă', 'runde') + ', ' + t.ok + ' corecte din ' + t.q + (t.spn || t.sp ? ' · ' + nr(t.spn || 1, 'sprint', 'sprinturi') : ' · fără sprint'));
+  out.push('Azi: ' + nr(t.r, 'rundă', 'runde') + ', ' + t.ok + ' corecte din ' + t.q + ' · ' + nr(Math.round((t.ms || 0) / 60000), 'minut', 'minute') + (t.spn || t.sp ? ' · ' + nr(t.spn || 1, 'sprint', 'sprinturi') : ' · fără sprint'));
   if (S.test.done) {
     const res = S.test.res;
     out.push('');
