@@ -1297,6 +1297,8 @@ function ctaPick() {
 // După un nivel trecut, încercarea următoare: fără exemple, 2 de completat, L.ns singur. După un nivel picat
 // rămân toate cele L.nf de completat: ajutorul se retrage după reușită, nu după greșeală (2026-10-27).
 // Nivelul final: 20 singur.
+// 7 · 4 și 4 · 7 (sau 8 + 5 și 5 + 8) sunt același calcul pentru „nu repeta prea repede” (profesorul, 2026-11-02).
+function factKey(q) { const m = /^(\S+) ([·+]) (\S+)$/.exec(q); return m ? [m[1], m[3]].sort().join(' ' + m[2] + ' ') : q; }
 function levelPlan(L, withDemo) {
   // Trece prin toate calculele nivelului, amestecate; apoi încă o dată, în altă ordine.
   // La nivelurile cu numere la întâmplare, nu repetă un calcul dintre ultimele 6 (la nivelul final, din tot nivelul).
@@ -1307,17 +1309,17 @@ function levelPlan(L, withDemo) {
     for (;;) {
       if (!pool.length) pool = L.pool().slice();
       const p = pool.shift(); it = L.make(p);
-      if (recent.indexOf(it.q) < 0 || ++t >= 10) break;
+      if (recent.indexOf(factKey(it.q)) < 0 || ++t >= 10) break;
       pool.push(p);   // îl păstrează pentru mai târziu (la nivelul final amestecat, ca să rămână câte calcule din fiecare nivel)
     }
-    recent.push(it.q); if (recent.length > keep) recent.shift();
+    recent.push(factKey(it.q)); if (recent.length > keep) recent.shift();
     return it;
   };
   const plan = [];
   if (L.boss) { for (let i = 0; i < L.ns; i++) plan.push({ mode: 'solo', it: next(), counted: true }); return plan; }
   if (withDemo) {
     const d = L.demos ? L.demos() : [next(), next()];
-    d.forEach(it => { recent.push(it.q); plan.push({ mode: 'demo', it }); });
+    d.forEach(it => { recent.push(factKey(it.q)); plan.push({ mode: 'demo', it }); });
   }
   const st = lvState(L.id), full = withDemo || st.s < 2 || !!st.lf, nf = full ? L.nf : 2;
   for (let i = 0; i < nf; i++) { const it = next(); plan.push({ mode: 'fill', it, blanks: full ? Math.min(it.slots.length, i + 1) : it.slots.length }); }
@@ -1397,7 +1399,12 @@ function sprintItems(w) {
   }
   // Destule calcule cât să poată bate recordul (ținta = recordul + 1), cu rezervă.
   const n = Math.max(w === 'mul' ? 30 : 40, sprintRecord(w) + 6);
-  for (let t = 0; out.length < n && t < n * 10; t++) { const L = levels[t % levels.length], p = L.pool(); add(L.make(p[rnd(0, p.length - 1)])); }
+  // Calculele la întâmplare nu repetă unul dintre ultimele 6 (după 10 încercări îl ia oricum, la o lume cu puține calcule).
+  for (let t = 0, miss = 0; out.length < n && t < n * 20; t++) {
+    const L = levels[t % levels.length], p = L.pool(), it = L.make(p[rnd(0, p.length - 1)]), k = factKey(it.q);
+    if (out.slice(-6).some(x => factKey(x.q) === k) && ++miss < 10) continue;
+    miss = 0; add(it);
+  }
   return out;
 }
 

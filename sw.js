@@ -1,6 +1,6 @@
 // Ține jocul pe telefon, ca să meargă și fără internet.
 // La o versiune nouă a jocului, construieste.py schimbă VERSIUNE și telefonul ia jocul nou.
-const VERSIUNE = 'cf-158c6e9328';
+const VERSIUNE = 'cf-d141bb205b';
 const FISIERE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

@@ -391,6 +391,17 @@ ok(CF.SPRINT.map(p => p[0] * p[1]).join(',') === '14,30,24,36,42,40,28,63,18,64,
   s.lv = { add10: { s: 2 }, addUp: { s: 3 } };
   ok(CF.dailyPlan().length === CF.DAILY_N, 'runda zilei cu doar două niveluri are tot ' + CF.DAILY_N + ' calcule');
 }
+// 7 · 4 și 4 · 7 sunt același calcul: nu vin din nou printre următoarele 6, nici la niveluri, nici la sprint (2026-11-02).
+{
+  const key = q => { const m = /^(\S+) ([·+]) (\S+)$/.exec(q); return m ? [m[1], m[3]].sort().join(m[2]) : q; };
+  const near = qs => qs.some((q, i) => qs.slice(Math.max(0, i - 6), i).some(x => key(x) === key(q)));
+  const s = CF.blankState(); CF.setS(s); let bad1 = 0, bad2 = 0;
+  CF.WORLDK.mul.levels.filter(L => !L.boss).forEach(L => { for (let r = 0; r < 300; r++) if (near(CF.levelPlan(L, true).map(e => e.it.q))) bad1++; });
+  ok(bad1 === 0, 'la tablă același calcul (și întors) revine printre următoarele 6: ' + bad1);
+  s.lv.mul4 = { s: 2, p: 1, b: 10 }; s.lv.mul7 = { s: 2, p: 1, b: 10 }; s.lv.mulP = { s: 2, p: 1, b: 10 };
+  for (let r = 0; r < 200; r++) { const qs = CF.sprintItems('mul').map(x => x.q); if (near(qs.slice(-20))) bad2++; }
+  ok(bad2 === 0, 'la sprintul tablei același calcul revine prea repede: ' + bad2);
+}
 // Răspunsul se verifică doar la OK: nicio căsuță nu primește singură răspunsul corect.
 ok(js.indexOf("'auto'") < 0 && !/input\.length === fmt/.test(js), 'răspunsul se primește singur, fără OK');
 
